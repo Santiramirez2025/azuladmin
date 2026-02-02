@@ -1,0 +1,9 @@
+# Database (Supabase PostgreSQL)
+DATABASE_URL="postgres://postgres.juupurpqobvkrjnmfmki:hn3LwKbJ2dwyrEQW@aws-0-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require"
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL="https://juupurpqobvkrjnmfmki.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1dXB1cnBxb2J2a3Jqbm1mbWtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwNTg0NTAsImV4cCI6MjA4MDYzNDQ1MH0.t-5pXrV5qloZHQrsyGcATkskw22TNmU5w9fqOsEuEw8"
+
+# App
+NEXT_PUBLIC_APP_URL="http://localhost:3000"

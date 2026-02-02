@@ -1,0 +1,222 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════
+// USUARIOS Y AUTENTICACIÓN
+// ═══════════════════════════════════════════════════════════
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      Role     @default(VENDEDOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents Document[]
+
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  VENDEDOR
+}
+
+// ═══════════════════════════════════════════════════════════
+// CLIENTES
+// ═══════════════════════════════════════════════════════════
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  dni       String?
+  phone     String
+  email     String?
+  address   String?
+  city      String   @default("Villa María")
+  province  String   @default("Córdoba")
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents Document[]
+
+  @@map("clients")
+}
+
+// ═══════════════════════════════════════════════════════════
+// PRODUCTOS
+// ═══════════════════════════════════════════════════════════
+
+model Product {
+  id          String   @id @default(cuid())
+  sku         String   @unique
+  name        String
+  category    Category @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  brand       String   @default("PIERO")
+  description String?
+  warranty    Int      @default(5) // años
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  variants ProductVariant[]
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id        String      @id @default(cuid())
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  size      String      // "140x190", "160x200", etc.
+  price     Decimal     @db.Decimal(12, 2)
+  costPrice Decimal?    @db.Decimal(12, 2)
+  source    StockSource @default(CATALOGO)
+  stockQty  Int         @default(0)
+  minStock  Int         @default(0)
+  isActive  Boolean     @default(true)
+
+  documentItems DocumentItem[]
+
+  @@unique([productId, size])
+  @@map("product_variants")
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  icon     String?
+  order    Int       @default(0)
+  products Product[]
+
+  @@map("categories")
+}
+
+enum StockSource {
+  STOCK    // Disponible en showroom
+  CATALOGO // Pedido a fábrica (7-10 días)
+}
+
+// ═══════════════════════════════════════════════════════════
+// DOCUMENTOS (Presupuestos, Recibos, Remitos)
+// ═══════════════════════════════════════════════════════════
+
+model Document {
+  id              String         @id @default(cuid())
+  number          Int            @default(autoincrement())
+  type            DocumentType
+  status          DocumentStatus @default(DRAFT)
+
+  // Relaciones
+  client          Client         @relation(fields: [clientId], references: [id])
+  clientId        String
+  createdBy       User           @relation(fields: [userId], references: [id])
+  userId          String
+
+  // Fechas
+  date            DateTime       @default(now())
+  validUntil      DateTime?      // Solo presupuestos
+
+  // Items
+  items           DocumentItem[]
+
+  // Totales
+  subtotal        Decimal        @db.Decimal(12, 2)
+  surcharge       Decimal        @default(0) @db.Decimal(12, 2)
+  surchargeRate   Int            @default(0) // porcentaje
+  total           Decimal        @db.Decimal(12, 2)
+
+  // Pago (para recibos)
+  paymentMethod   PaymentMethod?
+  installments    Int?
+  amountPaid      Decimal?       @db.Decimal(12, 2)
+  balance         Decimal?       @db.Decimal(12, 2)
+  paymentType     String?        // "Efectivo", "Transferencia", etc.
+
+  // Envío
+  shippingType    String         @default("Sin cargo en Villa María")
+  shippingCost    Decimal        @default(0) @db.Decimal(12, 2)
+
+  // Metadata
+  observations    String?
+  internalNotes   String?        // Solo visible internamente
+
+  // Conversiones
+  convertedFrom   Document?      @relation("DocumentConversion", fields: [convertedFromId], references: [id])
+  convertedFromId String?
+  convertedTo     Document[]     @relation("DocumentConversion")
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@map("documents")
+}
+
+model DocumentItem {
+  id          String          @id @default(cuid())
+  document    Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId  String
+
+  // Relación OPCIONAL - permite productos sueltos sin variante
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+  variantId   String?
+
+  // Snapshot de datos (siempre se guardan)
+  productName String
+  productSize String
+  unitPrice   Decimal         @db.Decimal(12, 2)
+  quantity    Int             @default(1)
+  subtotal    Decimal         @db.Decimal(12, 2)
+  source      StockSource     @default(CATALOGO)
+
+  // Flag para productos sueltos
+  isCustom    Boolean         @default(false)
+
+  @@map("document_items")
+}
+
+enum DocumentType {
+  PRESUPUESTO
+  RECIBO
+  REMITO
+}
+
+enum DocumentStatus {
+  DRAFT     // Borrador
+  SENT      // Enviado al cliente
+  APPROVED  // Aprobado/Confirmado
+  COMPLETED // Completado/Entregado
+  CANCELLED // Cancelado
+  EXPIRED   // Vencido (presupuestos)
+}
+
+enum PaymentMethod {
+  CONTADO   // Sin recargo
+  CUOTAS_3  // +18%
+  CUOTAS_6  // +25%
+  CUOTAS_9  // +35%
+  CUOTAS_12 // +47%
+}
+
+// ═══════════════════════════════════════════════════════════
+// CONFIGURACIÓN
+// ═══════════════════════════════════════════════════════════
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value Json
+
+  @@map("settings")
+}
