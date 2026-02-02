@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useState, useEffect, useCallback, useRef } from "react"
+import { Suspense, useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
@@ -11,7 +11,6 @@ import {
   Download,
   Printer,
   MoreHorizontal,
-  Filter,
   X,
   Truck,
   User,
@@ -24,9 +23,10 @@ import {
   Trash2,
   CheckCircle,
   AlertCircle,
-  Calendar,
   Package,
   Loader2,
+  Check,
+  ExternalLink,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -119,7 +119,7 @@ interface QuickProduct {
 }
 
 // ============================================================================
-// Constants
+// Constants & Config
 // ============================================================================
 
 const STATUS_CONFIG: Record<
@@ -149,10 +149,12 @@ const TYPE_CONFIG: Record<
 
 const PAGE_SIZE = 20
 
-// Business info para mensajes (esto debería venir de configuración)
-const BUSINESS = {
-  name: "AZUL COLCHONES",
-  phone: "+54 9 353 123-4567",
+// ⚙️ CONFIGURACIÓN DEL NEGOCIO
+const CONFIG = {
+  businessName: "AZUL COLCHONES",
+  businessPhone: "+54 9 353 123-4567",
+  // Link del grupo de WhatsApp de reparto
+  deliveryGroupLink: "https://chat.whatsapp.com/FlK4k2MUJWJ2vSjkek2WOd",
 }
 
 // ============================================================================
@@ -161,26 +163,13 @@ const BUSINESS = {
 
 function generateWhatsAppLink(phone: string, message: string): string {
   const cleanPhone = phone.replace(/\D/g, "")
-  const encodedMessage = encodeURIComponent(message)
-  return `https://wa.me/${cleanPhone}?text=${encodedMessage}`
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
 }
 
-function generateDocumentMessage(doc: Document, type: "client" | "delivery"): string {
+// Mensaje para CLIENTE (con precios)
+function generateClientMessage(doc: Document): string {
   const docNumber = `#${String(doc.number).padStart(5, "0")}`
   const typeLabel = TYPE_CONFIG[doc.type].label
-
-  if (type === "delivery") {
-    return `🚚 *REMITO ${docNumber}*
-
-📦 Cliente: ${doc.client.name}
-📍 Dirección: ${doc.client.address || "Sin dirección"}, ${doc.client.city}
-📞 Teléfono: ${doc.client.phone}
-
-💰 Total: ${formatCurrency(doc.total)}
-🚛 Envío: ${doc.shippingType}
-
-Por favor confirmar cuando esté entregado. ✅`
-  }
 
   const validUntilText = doc.type === "PRESUPUESTO" && doc.validUntil
     ? `\n📅 Válido hasta: ${formatDate(new Date(doc.validUntil))}`
@@ -195,7 +184,24 @@ Te envío tu *${typeLabel} ${docNumber}*
 ${doc.observations ? `📝 ${doc.observations}\n` : ""}
 Cualquier consulta estoy a tu disposición. ¡Gracias por tu confianza! 🙌
 
-_${BUSINESS.name}_`
+_${CONFIG.businessName}_`
+}
+
+// Mensaje para REPARTO (SIN PRECIOS)
+function generateDeliveryMessage(doc: Document): string {
+  const docNumber = `#${String(doc.number).padStart(5, "0")}`
+
+  return `🚚 *ENTREGA ${docNumber}*
+
+👤 *Cliente:* ${doc.client.name}
+📞 *Teléfono:* ${doc.client.phone}
+📍 *Dirección:* ${doc.client.address || "Sin dirección"}
+🏙️ *Ciudad:* ${doc.client.city}
+
+🚛 *Envío:* ${doc.shippingType}
+${doc.observations ? `\n📝 *Obs:* ${doc.observations}` : ""}
+
+Por favor confirmar cuando esté entregado ✅`
 }
 
 // ============================================================================
@@ -266,19 +272,13 @@ function QuickProductModal({ open, onClose, onAdd }: QuickProductModalProps) {
 
     setIsSubmitting(true)
     try {
-      // Crear producto con variante en la base de datos
       const res = await fetch("/api/products/quick", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          size,
-          price: parseFloat(price),
-        }),
+        body: JSON.stringify({ name, size, price: parseFloat(price) }),
       })
 
       if (res.ok) {
-        const data = await res.json()
         onAdd({
           name: `${name} - ${size}`,
           price: parseFloat(price),
@@ -293,7 +293,7 @@ function QuickProductModal({ open, onClose, onAdd }: QuickProductModalProps) {
       } else {
         toast.error("Error al crear producto")
       }
-    } catch (error) {
+    } catch {
       toast.error("Error al crear producto")
     } finally {
       setIsSubmitting(false)
@@ -336,9 +336,7 @@ function QuickProductModal({ open, onClose, onAdd }: QuickProductModalProps) {
             <div className="space-y-2">
               <Label htmlFor="product-price">Precio unitario</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  $
-                </span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                 <Input
                   id="product-price"
                   type="number"
@@ -378,27 +376,25 @@ function QuickProductModal({ open, onClose, onAdd }: QuickProductModalProps) {
 }
 
 // ============================================================================
-// WhatsApp Modal
+// WhatsApp Modal (Cliente)
 // ============================================================================
 
-interface WhatsAppModalProps {
+interface WhatsAppClientModalProps {
   open: boolean
   onClose: () => void
   document: Document | null
-  type: "client" | "delivery"
-  deliveryPhone?: string
 }
 
-function WhatsAppModal({ open, onClose, document: doc, type, deliveryPhone }: WhatsAppModalProps) {
+function WhatsAppClientModal({ open, onClose, document: doc }: WhatsAppClientModalProps) {
   const [message, setMessage] = useState("")
   const [phone, setPhone] = useState("")
 
   useEffect(() => {
     if (doc) {
-      setMessage(generateDocumentMessage(doc, type))
-      setPhone(type === "delivery" ? deliveryPhone || "" : doc.client.phone)
+      setMessage(generateClientMessage(doc))
+      setPhone(doc.client.phone)
     }
-  }, [doc, type, deliveryPhone])
+  }, [doc])
 
   const handleSend = () => {
     if (!phone) {
@@ -415,8 +411,8 @@ function WhatsAppModal({ open, onClose, document: doc, type, deliveryPhone }: Wh
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5 text-green-600" />
-            {type === "delivery" ? "Enviar a Reparto" : "Enviar a Cliente"}
+            <User className="h-5 w-5 text-green-600" />
+            Enviar a Cliente
           </DialogTitle>
           <DialogDescription>
             Personalizá el mensaje antes de enviar por WhatsApp.
@@ -424,23 +420,21 @@ function WhatsAppModal({ open, onClose, document: doc, type, deliveryPhone }: Wh
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="whatsapp-phone">
-              {type === "delivery" ? "Teléfono del repartidor" : "Teléfono del cliente"}
-            </Label>
+            <Label htmlFor="client-phone">Teléfono del cliente</Label>
             <Input
-              id="whatsapp-phone"
+              id="client-phone"
               placeholder="+54 9 351 123 4567"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="whatsapp-message">Mensaje</Label>
+            <Label htmlFor="client-message">Mensaje</Label>
             <Textarea
-              id="whatsapp-message"
+              id="client-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              rows={8}
+              rows={10}
               className="font-mono text-sm"
             />
           </div>
@@ -452,6 +446,101 @@ function WhatsAppModal({ open, onClose, document: doc, type, deliveryPhone }: Wh
           <Button onClick={handleSend} className="gap-2 bg-green-600 hover:bg-green-700">
             <MessageCircle className="h-4 w-4" />
             Enviar por WhatsApp
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ============================================================================
+// WhatsApp Modal (Reparto - Copiar al portapapeles)
+// ============================================================================
+
+interface WhatsAppDeliveryModalProps {
+  open: boolean
+  onClose: () => void
+  document: Document | null
+}
+
+function WhatsAppDeliveryModal({ open, onClose, document: doc }: WhatsAppDeliveryModalProps) {
+  const [message, setMessage] = useState("")
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (doc) {
+      setMessage(generateDeliveryMessage(doc))
+      setCopied(false)
+    }
+  }, [doc])
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message)
+      setCopied(true)
+      toast.success("Mensaje copiado al portapapeles")
+      setTimeout(() => setCopied(false), 3000)
+    } catch {
+      toast.error("Error al copiar")
+    }
+  }
+
+  const handleOpenGroup = () => {
+    window.open(CONFIG.deliveryGroupLink, "_blank")
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Truck className="h-5 w-5 text-orange-600" />
+            Enviar a Grupo de Reparto
+          </DialogTitle>
+          <DialogDescription>
+            Copiá el mensaje y pegalo en el grupo de WhatsApp.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Mensaje para el reparto</Label>
+            <Textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={12}
+              className="font-mono text-sm bg-gray-50"
+            />
+            <p className="text-xs text-muted-foreground">
+              💡 Este mensaje no incluye precios, solo datos de entrega.
+            </p>
+          </div>
+        </div>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button variant="outline" onClick={handleOpenGroup} className="gap-2">
+            <ExternalLink className="h-4 w-4" />
+            Abrir Grupo
+          </Button>
+          <Button
+            onClick={handleCopy}
+            className={cn(
+              "gap-2",
+              copied ? "bg-green-600 hover:bg-green-700" : "bg-orange-600 hover:bg-orange-700"
+            )}
+          >
+            {copied ? (
+              <>
+                <Check className="h-4 w-4" />
+                ¡Copiado!
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4" />
+                Copiar Mensaje
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -513,7 +602,7 @@ function DocumentActions({
         {doc.type === "REMITO" && (
           <DropdownMenuItem onClick={onSendDelivery}>
             <Truck className="mr-2 h-4 w-4 text-orange-600" />
-            Enviar a reparto
+            Copiar para reparto
           </DropdownMenuItem>
         )}
 
@@ -610,9 +699,7 @@ function StatsCards({ stats, isLoading }: { stats: DocumentStats; isLoading: boo
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-muted-foreground">
-                  {item.label}
-                </p>
+                <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
                 <p className="mt-1 text-2xl font-semibold">{item.value}</p>
               </div>
               <div className={cn("rounded-lg p-2", item.color)}>
@@ -627,13 +714,13 @@ function StatsCards({ stats, isLoading }: { stats: DocumentStats; isLoading: boo
 }
 
 // ============================================================================
-// Main Content Component (usa useSearchParams)
+// Main Content Component
 // ============================================================================
 
 function DocumentosContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  
+
   // State
   const [documents, setDocuments] = useState<Document[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -654,13 +741,10 @@ function DocumentosContent() {
 
   // Modal State
   const [quickProductOpen, setQuickProductOpen] = useState(false)
-  const [whatsAppOpen, setWhatsAppOpen] = useState(false)
-  const [whatsAppType, setWhatsAppType] = useState<"client" | "delivery">("client")
+  const [clientModalOpen, setClientModalOpen] = useState(false)
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false)
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
-
-  // Config (podría venir de settings)
-  const deliveryPhone = "+5493511234567" // Teléfono del reparto
 
   // Fetch documents
   const fetchDocuments = useCallback(async (showRefresh = false) => {
@@ -699,9 +783,7 @@ function DocumentosContent() {
 
   // Debounced fetch
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchDocuments()
-    }, 300)
+    const timer = setTimeout(() => fetchDocuments(), 300)
     return () => clearTimeout(timer)
   }, [fetchDocuments])
 
@@ -711,7 +793,7 @@ function DocumentosContent() {
     if (search) params.set("search", search)
     if (typeFilter !== "all") params.set("type", typeFilter)
     if (statusFilter !== "all") params.set("status", statusFilter)
-    
+
     const newUrl = params.toString() ? `?${params}` : "/documentos"
     window.history.replaceState({}, "", newUrl)
   }, [search, typeFilter, statusFilter])
@@ -733,7 +815,7 @@ function DocumentosContent() {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
       toast.success("PDF descargado")
-    } catch (error) {
+    } catch {
       toast.error("Error al generar PDF")
     } finally {
       setDownloadingId(null)
@@ -747,23 +829,18 @@ function DocumentosContent() {
 
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
-      
       const printWindow = window.open(url, "_blank")
       if (printWindow) {
-        printWindow.onload = () => {
-          printWindow.print()
-        }
+        printWindow.onload = () => printWindow.print()
       }
-    } catch (error) {
+    } catch {
       toast.error("Error al preparar impresión")
     }
   }
 
   const handleDuplicate = async (doc: Document) => {
     try {
-      const res = await fetch(`/api/documents/${doc.id}/duplicate`, {
-        method: "POST",
-      })
+      const res = await fetch(`/api/documents/${doc.id}/duplicate`, { method: "POST" })
       if (res.ok) {
         const newDoc = await res.json()
         toast.success("Documento duplicado")
@@ -771,7 +848,7 @@ function DocumentosContent() {
       } else {
         toast.error("Error al duplicar")
       }
-    } catch (error) {
+    } catch {
       toast.error("Error al duplicar")
     }
   }
@@ -782,34 +859,29 @@ function DocumentosContent() {
     }
 
     try {
-      const res = await fetch(`/api/documents/${doc.id}`, {
-        method: "DELETE",
-      })
+      const res = await fetch(`/api/documents/${doc.id}`, { method: "DELETE" })
       if (res.ok) {
         toast.success("Documento eliminado")
         fetchDocuments(true)
       } else {
         toast.error("Error al eliminar")
       }
-    } catch (error) {
+    } catch {
       toast.error("Error al eliminar")
     }
   }
 
   const handleWhatsAppClient = (doc: Document) => {
     setSelectedDocument(doc)
-    setWhatsAppType("client")
-    setWhatsAppOpen(true)
+    setClientModalOpen(true)
   }
 
   const handleWhatsAppDelivery = (doc: Document) => {
     setSelectedDocument(doc)
-    setWhatsAppType("delivery")
-    setWhatsAppOpen(true)
+    setDeliveryModalOpen(true)
   }
 
   const handleQuickProduct = (product: QuickProduct) => {
-    // Esto se integraría con el formulario de documento abierto
     toast.success(`${product.name} creado correctamente`)
   }
 
@@ -830,9 +902,7 @@ function DocumentosContent() {
           {/* Header */}
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-                Documentos
-              </h1>
+              <h1 className="text-2xl font-bold tracking-tight text-gray-900">Documentos</h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 Gestiona presupuestos, recibos y remitos
               </p>
@@ -878,7 +948,6 @@ function DocumentosContent() {
           <Card className="mb-6">
             <CardContent className="p-4">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-                {/* Search */}
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
@@ -892,7 +961,6 @@ function DocumentosContent() {
                   />
                 </div>
 
-                {/* Type Filter */}
                 <Select
                   value={typeFilter}
                   onValueChange={(v) => {
@@ -911,7 +979,6 @@ function DocumentosContent() {
                   </SelectContent>
                 </Select>
 
-                {/* Status Filter */}
                 <Select
                   value={statusFilter}
                   onValueChange={(v) => {
@@ -933,7 +1000,6 @@ function DocumentosContent() {
                   </SelectContent>
                 </Select>
 
-                {/* Sort */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2">
@@ -942,25 +1008,24 @@ function DocumentosContent() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => { setSortBy("date"); setSortOrder("desc"); }}>
+                    <DropdownMenuItem onClick={() => { setSortBy("date"); setSortOrder("desc") }}>
                       Más recientes
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setSortBy("date"); setSortOrder("asc"); }}>
+                    <DropdownMenuItem onClick={() => { setSortBy("date"); setSortOrder("asc") }}>
                       Más antiguos
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setSortBy("total"); setSortOrder("desc"); }}>
+                    <DropdownMenuItem onClick={() => { setSortBy("total"); setSortOrder("desc") }}>
                       Mayor importe
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setSortBy("total"); setSortOrder("asc"); }}>
+                    <DropdownMenuItem onClick={() => { setSortBy("total"); setSortOrder("asc") }}>
                       Menor importe
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setSortBy("number"); setSortOrder("desc"); }}>
+                    <DropdownMenuItem onClick={() => { setSortBy("number"); setSortOrder("desc") }}>
                       Número (desc)
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* Clear Filters */}
                 {hasFilters && (
                   <Button
                     variant="ghost"
@@ -980,9 +1045,7 @@ function DocumentosContent() {
           <Card>
             <CardHeader className="border-b py-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">
-                  Lista de Documentos
-                </CardTitle>
+                <CardTitle className="text-base font-semibold">Lista de Documentos</CardTitle>
                 <Badge variant="secondary" className="font-normal">
                   {total} {total === 1 ? "documento" : "documentos"}
                 </Badge>
@@ -1031,21 +1094,15 @@ function DocumentosContent() {
                               </TableCell>
                               <TableCell>
                                 <div>
-                                  <p className="font-medium text-gray-900">
-                                    {doc.client.name}
-                                  </p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {doc.client.phone}
-                                  </p>
+                                  <p className="font-medium text-gray-900">{doc.client.name}</p>
+                                  <p className="text-sm text-muted-foreground">{doc.client.phone}</p>
                                 </div>
                               </TableCell>
                               <TableCell className="text-right font-semibold tabular-nums">
                                 {formatCurrency(Number(doc.total))}
                               </TableCell>
                               <TableCell>
-                                <Badge variant={statusConfig.color}>
-                                  {statusConfig.label}
-                                </Badge>
+                                <Badge variant={statusConfig.color}>{statusConfig.label}</Badge>
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">
                                 {formatDate(new Date(doc.date))}
@@ -1073,8 +1130,7 @@ function DocumentosContent() {
                   {totalPages > 1 && (
                     <div className="flex items-center justify-between border-t px-4 py-3">
                       <p className="text-sm text-muted-foreground">
-                        Mostrando {(page - 1) * PAGE_SIZE + 1} -{" "}
-                        {Math.min(page * PAGE_SIZE, total)} de {total}
+                        Mostrando {(page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, total)} de {total}
                       </p>
                       <div className="flex items-center gap-2">
                         <Button
@@ -1085,9 +1141,7 @@ function DocumentosContent() {
                         >
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <span className="text-sm">
-                          Página {page} de {totalPages}
-                        </span>
+                        <span className="text-sm">Página {page} de {totalPages}</span>
                         <Button
                           variant="outline"
                           size="sm"
@@ -1104,16 +1158,10 @@ function DocumentosContent() {
             </CardContent>
           </Card>
 
-          {/* Keyboard Shortcuts Hint */}
+          {/* Shortcuts Hint */}
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            <kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">
-              N
-            </kbd>{" "}
-            nuevo documento ·{" "}
-            <kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">
-              /
-            </kbd>{" "}
-            buscar
+            <kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">N</kbd> nuevo documento ·{" "}
+            <kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">/</kbd> buscar
           </p>
         </div>
 
@@ -1124,12 +1172,16 @@ function DocumentosContent() {
           onAdd={handleQuickProduct}
         />
 
-        <WhatsAppModal
-          open={whatsAppOpen}
-          onClose={() => setWhatsAppOpen(false)}
+        <WhatsAppClientModal
+          open={clientModalOpen}
+          onClose={() => setClientModalOpen(false)}
           document={selectedDocument}
-          type={whatsAppType}
-          deliveryPhone={deliveryPhone}
+        />
+
+        <WhatsAppDeliveryModal
+          open={deliveryModalOpen}
+          onClose={() => setDeliveryModalOpen(false)}
+          document={selectedDocument}
         />
       </div>
     </TooltipProvider>
