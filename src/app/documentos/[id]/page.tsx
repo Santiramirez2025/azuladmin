@@ -183,7 +183,7 @@ ${itemsList}
 📦 ${document.shippingType}`
 
     if (hasCatalogoItems) {
-      message += `\n⏱️ Entrega estimada: 7-10 días hábiles`
+      message += `\n⏱️ Entrega estimada: 24/48hs`
     }
 
     message += `

@@ -306,12 +306,19 @@ function NuevoDocumentoContent() {
           ? new Date(Date.now() + validDays * 24 * 60 * 60 * 1000).toISOString()
           : undefined
 
+      console.log("📤 Enviando documento a la API:", {
+        clientId: client.id,
+        type,
+        itemsCount: apiItems.length,
+        total,
+      })
+
       const res = await fetch("/api/documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clientId: client.id,
-          userId: "user-id-here", // TODO: obtener del auth
+          // ✅ NO enviamos userId - la API asignará automáticamente el usuario por defecto
           type,
           items: apiItems,
           observations,
@@ -326,10 +333,12 @@ function NuevoDocumentoContent() {
 
       if (!res.ok) {
         const error = await res.json()
+        console.error("❌ Error de la API:", error)
         throw new Error(error.error || "Error al crear documento")
       }
 
       const document = await res.json()
+      console.log("✅ Documento creado:", document.id)
 
       // Si es "send", actualizar estado y abrir WhatsApp
       if (action === "send") {
@@ -357,7 +366,7 @@ function NuevoDocumentoContent() {
       )
       router.push(`/documentos/${document.id}`)
     } catch (error) {
-      console.error("Error:", error)
+      console.error("💥 Error al guardar documento:", error)
       toast.error(error instanceof Error ? error.message : "Error al guardar")
     } finally {
       setIsSubmitting(false)

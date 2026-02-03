@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       clientId,
-      userId,
+      userId: providedUserId,
       type,
       items,
       observations,
@@ -169,25 +169,45 @@ export async function POST(request: NextRequest) {
       shippingCost = 0,
     } = body
 
-    if (!clientId || !userId || !type || !items?.length) {
+    // Si no viene userId, usar el primer usuario disponible
+    let userId = providedUserId
+    if (!userId) {
+      const defaultUser = await prisma.user.findFirst({
+        orderBy: { createdAt: "asc" },
+      })
+      if (!defaultUser) {
+        return NextResponse.json(
+          { error: "No hay usuarios en el sistema" },
+          { status: 400 }
+        )
+      }
+      userId = defaultUser.id
+    }
+
+    if (!clientId || !type || !items?.length) {
       return NextResponse.json(
-        { error: "Faltan campos requeridos" },
+        { error: "Faltan campos requeridos (clientId, type, items)" },
         { status: 400 }
       )
     }
 
     // Separar items del catálogo de items custom
-    const catalogItems = items.filter((item: DocumentItemInput) => item.variantId && !item.isCustom)
-    const customItems = items.filter((item: DocumentItemInput) => item.isCustom || !item.variantId)
+    const catalogItems = items.filter(
+      (item: DocumentItemInput) => item.variantId && !item.isCustom
+    )
+    const customItems = items.filter(
+      (item: DocumentItemInput) => item.isCustom || !item.variantId
+    )
 
     // Obtener datos de variantes del catálogo
     const variantIds = catalogItems.map((item: DocumentItemInput) => item.variantId!)
-    const variants = variantIds.length > 0 
-      ? await prisma.productVariant.findMany({
-          where: { id: { in: variantIds } },
-          include: { product: true },
-        })
-      : []
+    const variants =
+      variantIds.length > 0
+        ? await prisma.productVariant.findMany({
+            where: { id: { in: variantIds } },
+            include: { product: true },
+          })
+        : []
 
     const variantMap = new Map(variants.map((v) => [v.id, v]))
 
@@ -216,6 +236,7 @@ export async function POST(request: NextRequest) {
         quantity: item.quantity,
         subtotal: itemSubtotal,
         source: variant.source,
+        isCustom: false,
       })
     }
 
@@ -238,6 +259,7 @@ export async function POST(request: NextRequest) {
         quantity: item.quantity,
         subtotal: itemSubtotal,
         source: "CATALOGO",
+        isCustom: true,
       })
     }
 
