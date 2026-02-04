@@ -88,6 +88,9 @@ const SHIPPING_OPTIONS = [
   "Envío interior (+costo)",
 ]
 
+// Número de WhatsApp del repartidor
+const DELIVERY_WHATSAPP = "5493535694658" // +54 9 3535 69-4658
+
 // ============================================================================
 // Loading Skeleton
 // ============================================================================
@@ -318,7 +321,6 @@ function NuevoDocumentoContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clientId: client.id,
-          // ✅ NO enviamos userId - la API asignará automáticamente el usuario por defecto
           type,
           items: apiItems,
           observations,
@@ -342,28 +344,99 @@ function NuevoDocumentoContent() {
 
       // Si es "send", actualizar estado y abrir WhatsApp
       if (action === "send") {
-        await fetch(`/api/documents/${document.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "SENT" }),
-        })
+        console.log("📤 Actualizando estado a SENT...")
+        
+        try {
+          await fetch(`/api/documents/${document.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "SENT" }),
+          })
+          console.log("✅ Estado actualizado a SENT")
+        } catch (error) {
+          console.error("⚠️ Error al actualizar estado:", error)
+          // Continuar con el envío de WhatsApp aunque falle la actualización
+        }
 
-        // Abrir WhatsApp
-        const message = `¡Hola ${client.name}! 👋\n\nTe envío tu *${
-          type === "PRESUPUESTO" ? "Presupuesto" : type === "RECIBO" ? "Recibo" : "Remito"
-        } #${String(document.number).padStart(5, "0")}*\n\n💰 Total: *${formatCurrency(
-          total
-        )}*\n\n¡Gracias por tu confianza!`
+        // 🚚 LÓGICA PARA REMITO: Enviar al repartidor SIN precios
+        if (type === "REMITO") {
+          console.log("🚚 Preparando mensaje de REMITO para repartidor...")
+          
+          // Construir lista de productos sin precios
+          const productList = items
+            .map((item, index) => {
+              return `${index + 1}. ${item.productName}${
+                item.productSize ? ` - ${item.productSize}` : ""
+              } x${item.quantity}`
+            })
+            .join("\n")
 
-        const whatsappUrl = `https://wa.me/${client.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
-          message
-        )}`
-        window.open(whatsappUrl, "_blank")
+          const deliveryMessage = `🚚 *REMITO #${String(document.number).padStart(5, "0")}*\n\n` +
+            `📦 *Cliente:* ${client.name}\n` +
+            `📍 *Dirección:* ${client.address || "No especificada"}\n` +
+            `🏙️ *Ciudad:* ${client.city}\n` +
+            `📞 *Teléfono:* ${client.phone}\n\n` +
+            `*Productos a entregar:*\n${productList}\n\n` +
+            `${shippingType ? `📍 *Tipo de envío:* ${shippingType}\n` : ""}` +
+            `${observations ? `\n📝 *Observaciones:* ${observations}` : ""}`
+
+          const deliveryWhatsappUrl = `https://wa.me/${DELIVERY_WHATSAPP}?text=${encodeURIComponent(
+            deliveryMessage
+          )}`
+          
+          console.log("📱 Abriendo WhatsApp del repartidor:", DELIVERY_WHATSAPP)
+          console.log("📝 Mensaje:", deliveryMessage)
+          
+          const whatsappWindow = window.open(deliveryWhatsappUrl, "_blank")
+          
+          if (whatsappWindow) {
+            console.log("✅ Ventana de WhatsApp abierta")
+            toast.success("Remito enviado al repartidor")
+          } else {
+            console.error("❌ Pop-up bloqueado. Intentando de nuevo...")
+            toast.error("Por favor, permite pop-ups para enviar el remito")
+            // Intentar abrir en la misma pestaña como fallback
+            setTimeout(() => {
+              window.location.href = deliveryWhatsappUrl
+            }, 1000)
+          }
+        } 
+        // 💰 LÓGICA PARA PRESUPUESTO/RECIBO: Enviar al cliente CON precios
+        else {
+          console.log("💰 Preparando mensaje para cliente...")
+          
+          const message = `¡Hola ${client.name}! 👋\n\nTe envío tu *${
+            type === "PRESUPUESTO" ? "Presupuesto" : "Recibo"
+          } #${String(document.number).padStart(5, "0")}*\n\n💰 Total: *${formatCurrency(
+            total
+          )}*\n\n¡Gracias por tu confianza!`
+
+          const clientPhone = client.phone.replace(/\D/g, "")
+          const whatsappUrl = `https://wa.me/${clientPhone}?text=${encodeURIComponent(
+            message
+          )}`
+          
+          console.log("📱 Abriendo WhatsApp del cliente:", clientPhone)
+          console.log("📝 Mensaje:", message)
+          
+          const whatsappWindow = window.open(whatsappUrl, "_blank")
+          
+          if (whatsappWindow) {
+            console.log("✅ Ventana de WhatsApp abierta")
+            toast.success("Documento enviado al cliente")
+          } else {
+            console.error("❌ Pop-up bloqueado. Intentando de nuevo...")
+            toast.error("Por favor, permite pop-ups para enviar el documento")
+            // Intentar abrir en la misma pestaña como fallback
+            setTimeout(() => {
+              window.location.href = whatsappUrl
+            }, 1000)
+          }
+        }
+      } else {
+        toast.success("Borrador guardado")
       }
 
-      toast.success(
-        action === "send" ? "Documento enviado" : "Borrador guardado"
-      )
       router.push(`/documentos/${document.id}`)
     } catch (error) {
       console.error("💥 Error al guardar documento:", error)
@@ -406,13 +479,17 @@ function NuevoDocumentoContent() {
             <Button
               onClick={() => handleSubmit("send")}
               disabled={!isValid || isSubmitting}
-              className="bg-green-600 hover:bg-green-700"
+              className={cn(
+                type === "REMITO" 
+                  ? "bg-orange-600 hover:bg-orange-700" 
+                  : "bg-green-600 hover:bg-green-700"
+              )}
             >
               {isSubmitting && saveAction === "send" && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
               <Send className="mr-2 h-4 w-4" />
-              Guardar y Enviar
+              {type === "REMITO" ? "Enviar a Reparto" : "Guardar y Enviar"}
             </Button>
           </div>
         </div>
@@ -438,7 +515,9 @@ function NuevoDocumentoContent() {
                       className={cn(
                         "rounded-lg border-2 p-4 text-left transition-all",
                         type === docType.value
-                          ? "border-blue-600 bg-blue-50"
+                          ? docType.value === "REMITO"
+                            ? "border-orange-600 bg-orange-50"
+                            : "border-blue-600 bg-blue-50"
                           : "border-gray-200 hover:border-gray-300"
                       )}
                     >
@@ -446,6 +525,11 @@ function NuevoDocumentoContent() {
                       <p className="text-xs text-muted-foreground">
                         {docType.description}
                       </p>
+                      {docType.value === "REMITO" && (
+                        <Badge variant="secondary" className="mt-2 bg-orange-100 text-orange-700">
+                          Se envía a reparto
+                        </Badge>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -614,40 +698,61 @@ function NuevoDocumentoContent() {
             </Card>
 
             {/* Summary */}
-            <Card className="border-2 border-blue-200 bg-blue-50/30">
+            <Card className={cn(
+              "border-2",
+              type === "REMITO" 
+                ? "border-orange-200 bg-orange-50/30" 
+                : "border-blue-200 bg-blue-50/30"
+            )}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Resumen</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span>{formatCurrency(subtotal)}</span>
-                </div>
+                {type !== "REMITO" && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>{formatCurrency(subtotal)}</span>
+                    </div>
 
-                {surcharge > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Recargo ({surchargeRate}%)
-                    </span>
-                    <span>{formatCurrency(surcharge)}</span>
-                  </div>
+                    {surcharge > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Recargo ({surchargeRate}%)
+                        </span>
+                        <span>{formatCurrency(surcharge)}</span>
+                      </div>
+                    )}
+
+                    {shippingCost > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Envío</span>
+                        <span>{formatCurrency(shippingCost)}</span>
+                      </div>
+                    )}
+
+                    <Separator />
+
+                    <div className="flex justify-between">
+                      <span className="font-semibold">Total</span>
+                      <span className="text-2xl font-bold text-blue-600">
+                        {formatCurrency(total)}
+                      </span>
+                    </div>
+                  </>
                 )}
 
-                {shippingCost > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Envío</span>
-                    <span>{formatCurrency(shippingCost)}</span>
+                {type === "REMITO" && (
+                  <div className="rounded-lg bg-orange-100 p-4 text-center">
+                    <Truck className="mx-auto mb-2 h-8 w-8 text-orange-600" />
+                    <p className="font-semibold text-orange-900">
+                      Remito de entrega
+                    </p>
+                    <p className="text-sm text-orange-700">
+                      Se enviará sin precios al repartidor
+                    </p>
                   </div>
                 )}
-
-                <Separator />
-
-                <div className="flex justify-between">
-                  <span className="font-semibold">Total</span>
-                  <span className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(total)}
-                  </span>
-                </div>
 
                 {!isValid && (
                   <div className="flex items-center gap-2 rounded-lg bg-amber-100 p-3 text-sm text-amber-800">
