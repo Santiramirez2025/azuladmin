@@ -30,6 +30,10 @@ import {
   Filter,
   Archive,
   Send,
+  Sparkles,
+  TrendingUp,
+  Clock,
+  Zap,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -139,23 +143,69 @@ const STATUS_CONFIG: Record<
     color: "default" | "secondary" | "success" | "warning" | "destructive"
     label: string
     icon: typeof CheckCircle
+    gradient: string
   }
 > = {
-  DRAFT: { color: "secondary", label: "Borrador", icon: FileText },
-  SENT: { color: "warning", label: "Enviado", icon: MessageCircle },
-  APPROVED: { color: "default", label: "Aprobado", icon: CheckCircle },
-  COMPLETED: { color: "success", label: "Completado", icon: CheckCircle },
-  CANCELLED: { color: "destructive", label: "Cancelado", icon: X },
-  EXPIRED: { color: "secondary", label: "Vencido", icon: AlertCircle },
+  DRAFT: { 
+    color: "secondary", 
+    label: "Borrador", 
+    icon: FileText,
+    gradient: "from-slate-500 to-slate-600"
+  },
+  SENT: { 
+    color: "warning", 
+    label: "Enviado", 
+    icon: Send,
+    gradient: "from-blue-500 to-cyan-500"
+  },
+  APPROVED: { 
+    color: "default", 
+    label: "Aprobado", 
+    icon: CheckCircle,
+    gradient: "from-violet-500 to-purple-600"
+  },
+  COMPLETED: { 
+    color: "success", 
+    label: "Completado", 
+    icon: CheckCircle,
+    gradient: "from-emerald-500 to-green-600"
+  },
+  CANCELLED: { 
+    color: "destructive", 
+    label: "Cancelado", 
+    icon: X,
+    gradient: "from-red-500 to-rose-600"
+  },
+  EXPIRED: { 
+    color: "secondary", 
+    label: "Vencido", 
+    icon: Clock,
+    gradient: "from-orange-500 to-amber-600"
+  },
 }
 
 const TYPE_CONFIG: Record<
   DocumentType,
-  { label: string; shortLabel: string; color: string }
+  { label: string; shortLabel: string; gradient: string; iconBg: string }
 > = {
-  PRESUPUESTO: { label: "Presupuesto", shortLabel: "PRE", color: "bg-blue-100 text-blue-700 border-blue-300" },
-  RECIBO: { label: "Recibo", shortLabel: "REC", color: "bg-emerald-100 text-emerald-700 border-emerald-300" },
-  REMITO: { label: "Remito", shortLabel: "REM", color: "bg-orange-100 text-orange-700 border-orange-300" },
+  PRESUPUESTO: { 
+    label: "Presupuesto", 
+    shortLabel: "PRE", 
+    gradient: "from-blue-500 to-indigo-600",
+    iconBg: "bg-gradient-to-br from-blue-500/10 to-indigo-600/10"
+  },
+  RECIBO: { 
+    label: "Recibo", 
+    shortLabel: "REC", 
+    gradient: "from-emerald-500 to-teal-600",
+    iconBg: "bg-gradient-to-br from-emerald-500/10 to-teal-600/10"
+  },
+  REMITO: { 
+    label: "Remito", 
+    shortLabel: "REM", 
+    gradient: "from-orange-500 to-red-600",
+    iconBg: "bg-gradient-to-br from-orange-500/10 to-red-600/10"
+  },
 }
 
 const PAGE_SIZE = 20
@@ -165,7 +215,7 @@ const CONFIG = {
   businessName: "AZUL COLCHONES",
   businessPhone: "+54 9 353 123-4567",
   deliveryGroupLink: "https://chat.whatsapp.com/FlK4k2MUJWJ2vSjkek2WOd",
-  deliveryPhone: "+54 9 3535 69-4658", // WhatsApp de reparto individual
+  deliveryPhone: "+54 9 3535 69-4658",
 }
 
 // ============================================================================
@@ -214,7 +264,6 @@ ${doc.observations ? `\n📝 *Obs:* ${doc.observations}` : ""}
 Por favor confirmar cuando esté entregado ✅`
 }
 
-// Función para enviar directamente por WhatsApp al reparto (para RECIBOS)
 function sendToDeliveryWhatsApp(doc: Document): void {
   const message = generateDeliveryMessage(doc)
   const url = generateWhatsAppLink(CONFIG.deliveryPhone, message)
@@ -229,7 +278,6 @@ function sendToDeliveryWhatsApp(doc: Document): void {
 function useKeyboardShortcuts(callbacks: Record<string, () => void>) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignorar si está en un input, textarea o contenteditable
       const target = e.target as HTMLElement
       if (
         target.tagName === "INPUT" ||
@@ -263,39 +311,42 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 // ============================================================================
-// Skeleton Components (Optimizados)
+// Skeleton Components
 // ============================================================================
 
 const TableSkeleton = () => (
-  <div className="space-y-2">
+  <div className="space-y-3">
     {[...Array(8)].map((_, i) => (
-      <div key={i} className="flex items-center gap-4 p-3 border-b last:border-0">
-        <Skeleton className="h-5 w-16" />
-        <Skeleton className="h-6 w-14 rounded-full" />
-        <div className="flex-1 space-y-1.5">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-3 w-24" />
-        </div>
+      <div key={i} className="flex items-center gap-4 rounded-xl border border-slate-100 bg-gradient-to-r from-slate-50/50 to-transparent p-4">
+        <Skeleton className="h-5 w-5 rounded" />
         <Skeleton className="h-5 w-20" />
-        <Skeleton className="h-6 w-20 rounded-full" />
-        <Skeleton className="h-4 w-16" />
-        <Skeleton className="h-8 w-8 rounded" />
+        <Skeleton className="h-7 w-16 rounded-full" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-3 w-32" />
+        </div>
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-7 w-24 rounded-full" />
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-9 w-9 rounded-lg" />
       </div>
     ))}
   </div>
 )
 
 const StatsSkeleton = () => (
-  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
     {[...Array(4)].map((_, i) => (
-      <Card key={i} className="border-l-4 border-l-transparent">
-        <CardContent className="p-4">
+      <Card key={i} className="group relative overflow-hidden border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+        <div className="absolute right-0 top-0 h-32 w-32 translate-x-8 -translate-y-8 rounded-full bg-gradient-to-br from-slate-500/10 to-slate-600/10 blur-2xl"></div>
+        <CardContent className="relative p-6">
           <div className="flex items-center justify-between">
-            <div className="space-y-2">
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-8 w-16" />
               <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-7 w-12" />
             </div>
-            <Skeleton className="h-10 w-10 rounded-xl" />
+            <Skeleton className="h-14 w-14 rounded-2xl" />
           </div>
         </CardContent>
       </Card>
@@ -304,7 +355,7 @@ const StatsSkeleton = () => (
 )
 
 // ============================================================================
-// Quick Product Modal (Mejorado)
+// Quick Product Modal
 // ============================================================================
 
 interface QuickProductModalProps {
@@ -320,7 +371,6 @@ function QuickProductModal({ open, onClose, onAdd }: QuickProductModalProps) {
   const [quantity, setQuantity] = useState("1")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Reset form cuando se cierra
   useEffect(() => {
     if (!open) {
       setName("")
@@ -373,21 +423,23 @@ function QuickProductModal({ open, onClose, onAdd }: QuickProductModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md border-0 bg-white/95 backdrop-blur-xl shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <div className="rounded-lg bg-blue-100 p-2">
-              <Package className="h-5 w-5 text-blue-600" />
+          <DialogTitle className="flex items-center gap-3 text-xl">
+            <div className="rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-2.5 shadow-lg shadow-blue-500/30">
+              <Package className="h-5 w-5 text-white" />
             </div>
-            Producto Rápido
+            <span className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+              Producto Rápido
+            </span>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-slate-600">
             Creá un producto nuevo y agregalo al documento en un solo paso.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="product-name">
+            <Label htmlFor="product-name" className="text-sm font-semibold text-slate-700">
               Nombre del producto <span className="text-red-500">*</span>
             </Label>
             <Input
@@ -397,10 +449,11 @@ function QuickProductModal({ open, onClose, onAdd }: QuickProductModalProps) {
               onChange={(e) => setName(e.target.value)}
               autoFocus
               disabled={isSubmitting}
+              className="border-slate-200 bg-white/50 focus:border-blue-500 focus:ring-blue-500/20"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="product-size">
+            <Label htmlFor="product-size" className="text-sm font-semibold text-slate-700">
               Medida <span className="text-red-500">*</span>
             </Label>
             <Input
@@ -409,15 +462,16 @@ function QuickProductModal({ open, onClose, onAdd }: QuickProductModalProps) {
               value={size}
               onChange={(e) => setSize(e.target.value)}
               disabled={isSubmitting}
+              className="border-slate-200 bg-white/50 focus:border-blue-500 focus:ring-blue-500/20"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="product-price">
+              <Label htmlFor="product-price" className="text-sm font-semibold text-slate-700">
                 Precio unitario <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">
                   $
                 </span>
                 <Input
@@ -428,13 +482,15 @@ function QuickProductModal({ open, onClose, onAdd }: QuickProductModalProps) {
                   placeholder="0.00"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  className="pl-7"
+                  className="border-slate-200 bg-white/50 pl-7 focus:border-blue-500 focus:ring-blue-500/20"
                   disabled={isSubmitting}
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="product-quantity">Cantidad</Label>
+              <Label htmlFor="product-quantity" className="text-sm font-semibold text-slate-700">
+                Cantidad
+              </Label>
               <Input
                 id="product-quantity"
                 type="number"
@@ -442,17 +498,24 @@ function QuickProductModal({ open, onClose, onAdd }: QuickProductModalProps) {
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 disabled={isSubmitting}
+                className="border-slate-200 bg-white/50 focus:border-blue-500 focus:ring-blue-500/20"
               />
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onClose} 
+              disabled={isSubmitting}
+              className="border-slate-200 hover:bg-slate-50"
+            >
               Cancelar
             </Button>
             <Button 
               type="submit" 
               disabled={!name.trim() || !price || !size.trim() || isSubmitting}
-              className="gap-2"
+              className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40"
             >
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {isSubmitting ? "Creando..." : "Crear y agregar"}
@@ -465,7 +528,7 @@ function QuickProductModal({ open, onClose, onAdd }: QuickProductModalProps) {
 }
 
 // ============================================================================
-// WhatsApp Modals (Optimizados)
+// WhatsApp Modals
 // ============================================================================
 
 interface WhatsAppClientModalProps {
@@ -495,7 +558,6 @@ function WhatsAppClientModal({ open, onClose, document: doc }: WhatsAppClientMod
     setIsSending(true)
     
     try {
-      // Opcional: marcar documento como "SENT"
       if (doc && doc.status === "DRAFT") {
         await fetch(`/api/documents/${doc.id}`, {
           method: "PATCH",
@@ -518,51 +580,63 @@ function WhatsAppClientModal({ open, onClose, document: doc }: WhatsAppClientMod
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg border-0 bg-white/95 backdrop-blur-xl shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <div className="rounded-lg bg-green-100 p-2">
-              <User className="h-5 w-5 text-green-600" />
+          <DialogTitle className="flex items-center gap-3 text-xl">
+            <div className="rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 p-2.5 shadow-lg shadow-green-500/30">
+              <User className="h-5 w-5 text-white" />
             </div>
-            Enviar a Cliente
+            <span className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+              Enviar a Cliente
+            </span>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-slate-600">
             Personalizá el mensaje antes de enviar por WhatsApp.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="client-phone">Teléfono del cliente</Label>
+            <Label htmlFor="client-phone" className="text-sm font-semibold text-slate-700">
+              Teléfono del cliente
+            </Label>
             <Input
               id="client-phone"
               placeholder="+54 9 351 123 4567"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               disabled={isSending}
+              className="border-slate-200 bg-white/50 focus:border-green-500 focus:ring-green-500/20"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="client-message">Mensaje</Label>
+            <Label htmlFor="client-message" className="text-sm font-semibold text-slate-700">
+              Mensaje
+            </Label>
             <Textarea
               id="client-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={12}
-              className="font-mono text-sm resize-none"
+              className="resize-none border-slate-200 bg-white/50 font-mono text-sm focus:border-green-500 focus:ring-green-500/20"
               disabled={isSending}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-slate-500">
               💡 Este mensaje incluye el total y detalles del documento.
             </p>
           </div>
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} disabled={isSending}>
+          <Button 
+            variant="outline" 
+            onClick={onClose} 
+            disabled={isSending}
+            className="border-slate-200 hover:bg-slate-50"
+          >
             Cancelar
           </Button>
           <Button 
             onClick={handleSend} 
-            className="gap-2 bg-green-600 hover:bg-green-700"
+            className="gap-2 bg-gradient-to-r from-green-600 to-emerald-600 font-semibold shadow-lg shadow-green-500/25 hover:shadow-xl hover:shadow-green-500/40"
             disabled={isSending || !phone.trim()}
           >
             {isSending ? (
@@ -614,40 +688,48 @@ function WhatsAppDeliveryModal({ open, onClose, document: doc }: WhatsAppDeliver
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg border-0 bg-white/95 backdrop-blur-xl shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <div className="rounded-lg bg-orange-100 p-2">
-              <Truck className="h-5 w-5 text-orange-600" />
+          <DialogTitle className="flex items-center gap-3 text-xl">
+            <div className="rounded-xl bg-gradient-to-br from-orange-500 to-red-600 p-2.5 shadow-lg shadow-orange-500/30">
+              <Truck className="h-5 w-5 text-white" />
             </div>
-            Enviar a Reparto
+            <span className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+              Enviar a Reparto
+            </span>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-slate-600">
             Copiá el mensaje y pegalo en el grupo de WhatsApp del reparto.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="space-y-2">
-            <Label>Mensaje para el reparto</Label>
+            <Label className="text-sm font-semibold text-slate-700">
+              Mensaje para el reparto
+            </Label>
             <Textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={14}
-              className="font-mono text-sm bg-orange-50/30 resize-none"
+              className="resize-none border-slate-200 bg-orange-50/30 font-mono text-sm focus:border-orange-500 focus:ring-orange-500/20"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-slate-500">
               💡 Este mensaje no incluye precios, solo datos de entrega.
             </p>
           </div>
         </div>
         <DialogFooter className="flex-col gap-2 sm:flex-row">
-          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
+          <Button 
+            variant="outline" 
+            onClick={onClose} 
+            className="w-full border-slate-200 hover:bg-slate-50 sm:w-auto"
+          >
             Cancelar
           </Button>
           <Button 
             variant="outline" 
             onClick={handleOpenGroup} 
-            className="gap-2 w-full sm:w-auto"
+            className="w-full gap-2 border-slate-200 hover:bg-slate-50 sm:w-auto"
           >
             <ExternalLink className="h-4 w-4" />
             Abrir Grupo
@@ -655,8 +737,10 @@ function WhatsAppDeliveryModal({ open, onClose, document: doc }: WhatsAppDeliver
           <Button
             onClick={handleCopy}
             className={cn(
-              "gap-2 w-full sm:w-auto transition-colors",
-              copied ? "bg-green-600 hover:bg-green-700" : "bg-orange-600 hover:bg-orange-700"
+              "w-full gap-2 font-semibold shadow-lg transition-all sm:w-auto",
+              copied 
+                ? "bg-gradient-to-r from-green-600 to-emerald-600 shadow-green-500/25 hover:shadow-xl hover:shadow-green-500/40" 
+                : "bg-gradient-to-r from-orange-600 to-red-600 shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/40"
             )}
           >
             {copied ? (
@@ -678,7 +762,7 @@ function WhatsAppDeliveryModal({ open, onClose, document: doc }: WhatsAppDeliver
 }
 
 // ============================================================================
-// Document Actions (Optimizado)
+// Document Actions
 // ============================================================================
 
 interface DocumentActionsProps {
@@ -707,102 +791,107 @@ const DocumentActions = ({
       <Button 
         variant="ghost" 
         size="sm" 
-        className="h-8 w-8 p-0 hover:bg-gray-100 transition-colors"
+        className="h-9 w-9 rounded-xl p-0 transition-all hover:bg-slate-100 hover:shadow-md"
       >
         <span className="sr-only">Abrir menú de acciones</span>
         <MoreHorizontal className="h-4 w-4" />
       </Button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="end" className="w-56">
-      <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
-        Documento #{String(doc.number).padStart(5, "0")}
+    <DropdownMenuContent align="end" className="w-56 border-slate-200 bg-white/95 backdrop-blur-xl shadow-xl">
+      <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+        #{String(doc.number).padStart(5, "0")}
       </DropdownMenuLabel>
-      <DropdownMenuSeparator />
+      <DropdownMenuSeparator className="bg-slate-100" />
 
       <Link href={`/documentos/${doc.id}`}>
-        <DropdownMenuItem className="cursor-pointer">
-          <Eye className="mr-2 h-4 w-4 text-gray-600" />
-          Ver detalle
+        <DropdownMenuItem className="cursor-pointer gap-2 rounded-lg">
+          <Eye className="h-4 w-4 text-slate-600" />
+          <span className="font-medium">Ver detalle</span>
         </DropdownMenuItem>
       </Link>
 
-      <DropdownMenuSeparator />
+      <DropdownMenuSeparator className="bg-slate-100" />
 
-      <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+      <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-slate-500">
         Enviar
       </DropdownMenuLabel>
 
-      <DropdownMenuItem onClick={onSendClient} className="cursor-pointer">
-        <User className="mr-2 h-4 w-4 text-green-600" />
-        Enviar a cliente
+      <DropdownMenuItem onClick={onSendClient} className="cursor-pointer gap-2 rounded-lg">
+        <User className="h-4 w-4 text-green-600" />
+        <span className="font-medium">Enviar a cliente</span>
       </DropdownMenuItem>
 
       {(doc.type === "REMITO" || doc.type === "RECIBO") && (
-        <DropdownMenuItem onClick={onSendDelivery} className="cursor-pointer">
-          <Truck className="mr-2 h-4 w-4 text-orange-600" />
-          {doc.type === "RECIBO" ? "Enviar a reparto" : "Copiar para reparto"}
+        <DropdownMenuItem onClick={onSendDelivery} className="cursor-pointer gap-2 rounded-lg">
+          <Truck className="h-4 w-4 text-orange-600" />
+          <span className="font-medium">
+            {doc.type === "RECIBO" ? "Enviar a reparto" : "Copiar para reparto"}
+          </span>
         </DropdownMenuItem>
       )}
 
-      <DropdownMenuSeparator />
+      <DropdownMenuSeparator className="bg-slate-100" />
 
-      <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+      <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-slate-500">
         Documentos
       </DropdownMenuLabel>
 
-      <DropdownMenuItem onClick={onDownloadPDF} disabled={isDownloading} className="cursor-pointer">
+      <DropdownMenuItem onClick={onDownloadPDF} disabled={isDownloading} className="cursor-pointer gap-2 rounded-lg">
         {isDownloading ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin text-blue-600" />
+          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
         ) : (
-          <Download className="mr-2 h-4 w-4 text-blue-600" />
+          <Download className="h-4 w-4 text-blue-600" />
         )}
-        Descargar PDF
+        <span className="font-medium">Descargar PDF</span>
       </DropdownMenuItem>
 
-      <DropdownMenuItem onClick={onPrint} className="cursor-pointer">
-        <Printer className="mr-2 h-4 w-4 text-purple-600" />
-        Imprimir
+      <DropdownMenuItem onClick={onPrint} className="cursor-pointer gap-2 rounded-lg">
+        <Printer className="h-4 w-4 text-purple-600" />
+        <span className="font-medium">Imprimir</span>
       </DropdownMenuItem>
 
-      <DropdownMenuSeparator />
+      <DropdownMenuSeparator className="bg-slate-100" />
 
-      <DropdownMenuItem onClick={onDuplicate} className="cursor-pointer">
-        <Copy className="mr-2 h-4 w-4 text-gray-600" />
-        Duplicar
+      <DropdownMenuItem onClick={onDuplicate} className="cursor-pointer gap-2 rounded-lg">
+        <Copy className="h-4 w-4 text-slate-600" />
+        <span className="font-medium">Duplicar</span>
       </DropdownMenuItem>
 
       <DropdownMenuItem
         onClick={onDelete}
-        className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-600"
+        className="cursor-pointer gap-2 rounded-lg text-red-600 focus:bg-red-50 focus:text-red-600"
       >
-        <Trash2 className="mr-2 h-4 w-4" />
-        Eliminar
+        <Trash2 className="h-4 w-4" />
+        <span className="font-medium">Eliminar</span>
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
 )
 
 // ============================================================================
-// Empty State (Mejorado)
+// Empty State
 // ============================================================================
 
 function EmptyState({ hasFilters }: { hasFilters: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 p-6 shadow-inner">
-        <FileText className="h-12 w-12 text-gray-400" />
+      <div className="relative mb-6">
+        <div className="absolute inset-0 animate-pulse rounded-3xl bg-gradient-to-br from-slate-200/50 to-slate-300/50 blur-2xl"></div>
+        <div className="relative rounded-3xl bg-gradient-to-br from-slate-100 to-slate-200/50 p-8 shadow-lg shadow-slate-900/5">
+          <FileText className="h-16 w-16 text-slate-400" />
+        </div>
       </div>
-      <h3 className="mt-6 text-lg font-semibold text-gray-900">
+      <h3 className="mb-2 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-xl font-bold text-transparent">
         {hasFilters ? "No se encontraron documentos" : "No hay documentos aún"}
       </h3>
-      <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+      <p className="mb-8 max-w-sm text-sm text-slate-600">
         {hasFilters
           ? "Probá ajustando los filtros de búsqueda o eliminándolos completamente."
           : "Comenzá creando tu primer documento para gestionar presupuestos, recibos y remitos."}
       </p>
       {!hasFilters && (
-        <Link href="/documentos/nuevo" className="mt-8">
-          <Button size="lg" className="gap-2 shadow-md">
+        <Link href="/documentos/nuevo">
+          <Button size="lg" className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6 text-base font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40">
             <Plus className="h-5 w-5" />
             Crear primer documento
           </Button>
@@ -813,7 +902,7 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
 }
 
 // ============================================================================
-// Stats Cards (Optimizados)
+// Stats Cards
 // ============================================================================
 
 function StatsCards({ stats, isLoading }: { stats: DocumentStats; isLoading: boolean }) {
@@ -821,66 +910,98 @@ function StatsCards({ stats, isLoading }: { stats: DocumentStats; isLoading: boo
 
   const items = [
     { 
-      label: "Total", 
+      label: "Total Documentos", 
       value: stats.total, 
       icon: FileText, 
-      color: "text-gray-700 bg-gray-100",
-      borderColor: "border-l-gray-400"
+      gradient: "from-slate-500 to-slate-600",
+      iconBg: "from-slate-500/10 to-slate-600/10",
+      change: "+12%",
+      changePositive: true
     },
     { 
       label: "Borradores", 
       value: stats.borradores, 
       icon: FileText, 
-      color: "text-amber-700 bg-amber-50",
-      borderColor: "border-l-amber-400"
+      gradient: "from-amber-500 to-orange-600",
+      iconBg: "from-amber-500/10 to-orange-600/10",
+      change: "3 activos",
+      changePositive: null
     },
     { 
       label: "Enviados", 
       value: stats.enviados, 
       icon: Send, 
-      color: "text-blue-700 bg-blue-50",
-      borderColor: "border-l-blue-400"
+      gradient: "from-blue-500 to-cyan-600",
+      iconBg: "from-blue-500/10 to-cyan-600/10",
+      change: "+8%",
+      changePositive: true
     },
     { 
       label: "Completados", 
       value: stats.completados, 
       icon: CheckCircle, 
-      color: "text-emerald-700 bg-emerald-50",
-      borderColor: "border-l-emerald-400"
+      gradient: "from-emerald-500 to-green-600",
+      iconBg: "from-emerald-500/10 to-green-600/10",
+      change: "+24%",
+      changePositive: true
     },
   ]
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {items.map((item) => (
-        <Card 
-          key={item.label} 
-          className={cn(
-            "transition-all hover:shadow-lg hover:-translate-y-0.5 border-l-4",
-            item.borderColor
-          )}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  {item.label}
-                </p>
-                <p className="mt-2 text-3xl font-bold">{item.value}</p>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {items.map((item, index) => (
+        <div key={item.label} className="group relative" style={{ animationDelay: `${index * 0.1}s` }}>
+          <div className={cn(
+            "absolute -inset-0.5 rounded-2xl bg-gradient-to-r opacity-20 blur transition duration-500 group-hover:opacity-40",
+            item.gradient
+          )}></div>
+          <Card className="relative overflow-hidden border-0 bg-white/80 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+            <div className={cn(
+              "absolute right-0 top-0 h-32 w-32 translate-x-8 -translate-y-8 rounded-full bg-gradient-to-br blur-2xl",
+              item.iconBg
+            )}></div>
+            <CardContent className="relative p-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+                    {item.label}
+                  </p>
+                  <p className={cn(
+                    "bg-gradient-to-r bg-clip-text text-4xl font-bold text-transparent",
+                    item.gradient
+                  )}>
+                    {item.value}
+                  </p>
+                  {item.change && (
+                    <div className={cn(
+                      "flex items-center gap-1.5 text-xs font-semibold",
+                      item.changePositive === true && "text-emerald-600",
+                      item.changePositive === false && "text-red-600",
+                      item.changePositive === null && "text-slate-600"
+                    )}>
+                      {item.changePositive === true && <TrendingUp className="h-3.5 w-3.5" />}
+                      <span>{item.change}</span>
+                    </div>
+                  )}
+                </div>
+                <div className={cn(
+                  "rounded-2xl bg-gradient-to-br p-4 shadow-lg transition-transform group-hover:scale-110",
+                  item.gradient,
+                  "shadow-" + item.gradient.split(" ")[0].replace("from-", "") + "/20"
+                )}>
+                  <item.icon className="h-7 w-7 text-white" />
+                </div>
               </div>
-              <div className={cn("rounded-xl p-3 shadow-sm", item.color)}>
-                <item.icon className="h-6 w-6" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       ))}
     </div>
   )
 }
 
 // ============================================================================
-// Batch Actions Bar (Nueva funcionalidad)
+// Batch Actions Bar
 // ============================================================================
 
 interface BatchActionsBarProps {
@@ -899,53 +1020,58 @@ function BatchActionsBar({
   if (selectedCount === 0) return null
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5">
-      <Card className="shadow-2xl border-2 border-blue-200 bg-blue-50">
-        <CardContent className="p-4 flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-blue-600" />
-            <span className="font-semibold text-blue-900">
-              {selectedCount} {selectedCount === 1 ? "documento seleccionado" : "documentos seleccionados"}
-            </span>
-          </div>
-          <div className="h-6 w-px bg-blue-200" />
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onBatchExport}
-              className="gap-2 bg-white hover:bg-blue-100"
-            >
-              <Download className="h-4 w-4" />
-              Exportar
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onBatchDelete}
-              className="gap-2 bg-white hover:bg-red-100 text-red-600 hover:text-red-700"
-            >
-              <Trash2 className="h-4 w-4" />
-              Eliminar
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onClearSelection}
-              className="gap-2"
-            >
-              <X className="h-4 w-4" />
-              Cancelar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-in slide-in-from-bottom-5">
+      <div className="relative">
+        <div className="absolute -inset-1 animate-pulse rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 opacity-40 blur-lg"></div>
+        <Card className="relative border-0 bg-white/95 shadow-2xl backdrop-blur-xl">
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-2 shadow-lg shadow-blue-500/30">
+                <CheckCircle className="h-5 w-5 text-white" />
+              </div>
+              <span className="font-semibold text-slate-900">
+                {selectedCount} {selectedCount === 1 ? "documento" : "documentos"}
+              </span>
+            </div>
+            <div className="h-8 w-px bg-slate-200"></div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onBatchExport}
+                className="gap-2 border-slate-200 bg-white/50 hover:bg-slate-50"
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Exportar</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onBatchDelete}
+                className="gap-2 border-red-200 bg-white/50 text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Eliminar</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onClearSelection}
+                className="gap-2 hover:bg-slate-100"
+              >
+                <X className="h-4 w-4" />
+                <span className="hidden sm:inline">Cancelar</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
 
 // ============================================================================
-// Main Content Component (Optimizado y Profesional)
+// Main Content Component
 // ============================================================================
 
 function DocumentosContent() {
@@ -1017,12 +1143,10 @@ function DocumentosContent() {
     }
   }, [debouncedSearch, typeFilter, statusFilter, sortBy, sortOrder, page])
 
-  // Fetch on mount and when dependencies change
   useEffect(() => {
     fetchDocuments()
   }, [fetchDocuments])
 
-  // Update URL params
   useEffect(() => {
     const params = new URLSearchParams()
     if (debouncedSearch) params.set("search", debouncedSearch)
@@ -1122,10 +1246,8 @@ function DocumentosContent() {
 
   const handleWhatsAppDelivery = (doc: Document) => {
     if (doc.type === "RECIBO") {
-      // Para RECIBOS: enviar directo por WhatsApp sin modal
       sendToDeliveryWhatsApp(doc)
     } else {
-      // Para REMITOS: abrir modal para copiar mensaje
       setSelectedDocument(doc)
       setDeliveryModalOpen(true)
     }
@@ -1143,7 +1265,6 @@ function DocumentosContent() {
     toast.info("Filtros limpiados")
   }
 
-  // Selection handlers
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedIds(new Set(documents.map(d => d.id)))
@@ -1189,10 +1310,8 @@ function DocumentosContent() {
 
   const handleBatchExport = async () => {
     toast.info("Función de exportación en desarrollo")
-    // Aquí iría la lógica de exportación
   }
 
-  // Keyboard shortcuts
   useKeyboardShortcuts({
     "n": () => router.push("/documentos/nuevo"),
     "/": () => document.getElementById("search-input")?.focus(),
@@ -1206,15 +1325,23 @@ function DocumentosContent() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 p-4 pt-20 md:p-8 md:pt-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 p-4 pt-20 md:p-8 md:pt-8">
         <div className="mx-auto max-w-7xl">
           {/* Header */}
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-                Documentos
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="absolute -inset-1 animate-pulse rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 opacity-20 blur"></div>
+                  <div className="relative rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 p-3 shadow-lg shadow-blue-500/30">
+                    <Sparkles className="h-7 w-7 text-white" />
+                  </div>
+                </div>
+                <h1 className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-4xl font-bold text-transparent">
+                  Documentos
+                </h1>
+              </div>
+              <p className="text-sm text-slate-600">
                 Gestiona presupuestos, recibos y remitos de forma profesional
               </p>
             </div>
@@ -1226,13 +1353,13 @@ function DocumentosContent() {
                     size="sm"
                     onClick={() => fetchDocuments(true)}
                     disabled={isRefreshing}
-                    className="gap-2"
+                    className="gap-2 border-slate-200 bg-white/50 backdrop-blur-sm hover:bg-white"
                   >
                     <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
                     <span className="hidden sm:inline">Actualizar</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent className="border-slate-200 bg-white/95 backdrop-blur-xl">
                   <p>Actualizar lista (R)</p>
                 </TooltipContent>
               </Tooltip>
@@ -1240,7 +1367,7 @@ function DocumentosContent() {
                 variant="outline"
                 size="sm"
                 onClick={() => setQuickProductOpen(true)}
-                className="hidden sm:flex gap-2"
+                className="hidden gap-2 border-slate-200 bg-white/50 backdrop-blur-sm hover:bg-white sm:flex"
               >
                 <Package className="h-4 w-4" />
                 Producto Rápido
@@ -1248,12 +1375,12 @@ function DocumentosContent() {
               <Link href="/documentos/nuevo">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button size="sm" className="gap-2 shadow-sm">
+                    <Button size="sm" className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40">
                       <Plus className="h-4 w-4" />
                       <span className="hidden sm:inline">Nuevo Documento</span>
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent className="border-slate-200 bg-white/95 backdrop-blur-xl">
                     <p>Crear documento (N)</p>
                   </TooltipContent>
                 </Tooltip>
@@ -1262,25 +1389,25 @@ function DocumentosContent() {
           </div>
 
           {/* Stats */}
-          <div className="mb-6">
+          <div className="mb-8">
             <StatsCards stats={stats} isLoading={isLoading && !isRefreshing} />
           </div>
 
           {/* Filters */}
-          <Card className="mb-6 shadow-sm border-gray-200">
-            <CardContent className="p-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+          <Card className="mb-6 border-0 bg-white/80 shadow-xl shadow-slate-900/5 backdrop-blur-sm">
+            <CardContent className="p-5">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
                     id="search-input"
-                    placeholder="Buscar por cliente, número, ciudad o notas... (Presioná /)"
+                    placeholder="Buscar por cliente, número, ciudad... (Presioná /)"
                     value={search}
                     onChange={(e) => {
                       setSearch(e.target.value)
                       setPage(1)
                     }}
-                    className="pl-9 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    className="border-slate-200 bg-white/50 pl-10 focus:border-blue-500 focus:ring-blue-500/20"
                   />
                 </div>
 
@@ -1291,10 +1418,10 @@ function DocumentosContent() {
                     setPage(1)
                   }}
                 >
-                  <SelectTrigger className="w-full lg:w-44 border-gray-300">
+                  <SelectTrigger className="w-full border-slate-200 bg-white/50 lg:w-48">
                     <SelectValue placeholder="Tipo" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="border-slate-200 bg-white/95 backdrop-blur-xl">
                     <SelectItem value="all">Todos los tipos</SelectItem>
                     <SelectItem value="PRESUPUESTO">📋 Presupuestos</SelectItem>
                     <SelectItem value="RECIBO">💵 Recibos</SelectItem>
@@ -1309,10 +1436,10 @@ function DocumentosContent() {
                     setPage(1)
                   }}
                 >
-                  <SelectTrigger className="w-full lg:w-44 border-gray-300">
+                  <SelectTrigger className="w-full border-slate-200 bg-white/50 lg:w-48">
                     <SelectValue placeholder="Estado" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="border-slate-200 bg-white/95 backdrop-blur-xl">
                     <SelectItem value="all">Todos los estados</SelectItem>
                     <SelectItem value="DRAFT">📝 Borrador</SelectItem>
                     <SelectItem value="SENT">📤 Enviado</SelectItem>
@@ -1325,27 +1452,29 @@ function DocumentosContent() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 border-gray-300">
+                    <Button variant="outline" size="sm" className="gap-2 border-slate-200 bg-white/50">
                       <ArrowUpDown className="h-4 w-4" />
                       <span className="hidden sm:inline">Ordenar</span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuLabel>Ordenar por</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => { setSortBy("date"); setSortOrder("desc") }}>
+                  <DropdownMenuContent align="end" className="w-48 border-slate-200 bg-white/95 backdrop-blur-xl">
+                    <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Ordenar por
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-slate-100" />
+                    <DropdownMenuItem onClick={() => { setSortBy("date"); setSortOrder("desc") }} className="cursor-pointer rounded-lg">
                       📅 Más recientes
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setSortBy("date"); setSortOrder("asc") }}>
+                    <DropdownMenuItem onClick={() => { setSortBy("date"); setSortOrder("asc") }} className="cursor-pointer rounded-lg">
                       📅 Más antiguos
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setSortBy("total"); setSortOrder("desc") }}>
+                    <DropdownMenuItem onClick={() => { setSortBy("total"); setSortOrder("desc") }} className="cursor-pointer rounded-lg">
                       💰 Mayor importe
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setSortBy("total"); setSortOrder("asc") }}>
+                    <DropdownMenuItem onClick={() => { setSortBy("total"); setSortOrder("asc") }} className="cursor-pointer rounded-lg">
                       💰 Menor importe
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setSortBy("number"); setSortOrder("desc") }}>
+                    <DropdownMenuItem onClick={() => { setSortBy("number"); setSortOrder("desc") }} className="cursor-pointer rounded-lg">
                       🔢 Número (desc)
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -1358,13 +1487,15 @@ function DocumentosContent() {
                         variant="ghost"
                         size="sm"
                         onClick={clearFilters}
-                        className="gap-1 text-muted-foreground hover:text-gray-900"
+                        className="gap-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       >
                         <X className="h-4 w-4" />
                         <span className="hidden sm:inline">Limpiar</span>
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Limpiar todos los filtros</TooltipContent>
+                    <TooltipContent className="border-slate-200 bg-white/95 backdrop-blur-xl">
+                      Limpiar todos los filtros
+                    </TooltipContent>
                   </Tooltip>
                 )}
               </div>
@@ -1372,28 +1503,32 @@ function DocumentosContent() {
           </Card>
 
           {/* Table */}
-          <Card className="shadow-md border-gray-200">
-            <CardHeader className="border-b bg-gray-50/50 py-4">
+          <Card className="border-0 bg-white/80 shadow-xl shadow-slate-900/5 backdrop-blur-sm">
+            <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-blue-50/50 py-5">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-gray-600" />
-                  Lista de Documentos
+                <CardTitle className="flex items-center gap-2.5 text-base font-semibold">
+                  <div className="rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 p-1.5">
+                    <FileText className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                    Lista de Documentos
+                  </span>
                 </CardTitle>
                 <div className="flex items-center gap-3">
                   {selectedIds.size > 0 && (
-                    <span className="text-sm text-blue-600 font-medium">
+                    <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 font-medium shadow-lg shadow-blue-500/20">
                       {selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}
-                    </span>
+                    </Badge>
                   )}
-                  <Badge variant="secondary" className="font-normal">
-                    {total} {total === 1 ? "documento" : "documentos"}
+                  <Badge variant="secondary" className="border border-slate-200 bg-slate-50 font-medium">
+                    {total} documento{total !== 1 ? "s" : ""}
                   </Badge>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
               {isLoading && !isRefreshing ? (
-                <div className="p-4">
+                <div className="p-6">
                   <TableSkeleton />
                 </div>
               ) : documents.length === 0 ? (
@@ -1403,28 +1538,31 @@ function DocumentosContent() {
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-gray-50/80 hover:bg-gray-50">
-                          <TableHead className="w-12">
+                        <TableRow className="border-slate-100 bg-slate-50/50 hover:bg-slate-50">
+                          <TableHead className="w-12 pl-6">
                             <Checkbox
                               checked={isAllSelected}
                               onCheckedChange={handleSelectAll}
                               aria-label="Seleccionar todos"
                               className={cn(
+                                "border-slate-300",
                                 isSomeSelected && "data-[state=checked]:bg-blue-600"
                               )}
                             />
                           </TableHead>
-                          <TableHead className="w-28 font-semibold">Número</TableHead>
-                          <TableHead className="w-28 font-semibold">Tipo</TableHead>
-                          <TableHead className="font-semibold">Cliente</TableHead>
-                          <TableHead className="text-right font-semibold">Total</TableHead>
-                          <TableHead className="w-32 font-semibold">Estado</TableHead>
-                          <TableHead className="w-28 font-semibold">Fecha</TableHead>
-                          <TableHead className="w-20 text-right font-semibold">Acciones</TableHead>
+                          <TableHead className="w-32 font-semibold text-slate-700">Número</TableHead>
+                          <TableHead className="w-28 font-semibold text-slate-700">Tipo</TableHead>
+                          <TableHead className="font-semibold text-slate-700">Cliente</TableHead>
+                          <TableHead className="text-right font-semibold text-slate-700">Total</TableHead>
+                          <TableHead className="w-36 font-semibold text-slate-700">Estado</TableHead>
+                          <TableHead className="w-32 font-semibold text-slate-700">Fecha</TableHead>
+                          <TableHead className="w-20 pr-6 text-right font-semibold text-slate-700">
+                            Acciones
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {documents.map((doc) => {
+                        {documents.map((doc, index) => {
                           const statusConfig = STATUS_CONFIG[doc.status]
                           const typeConfig = TYPE_CONFIG[doc.type]
                           const isSelected = selectedIds.has(doc.id)
@@ -1433,11 +1571,10 @@ function DocumentosContent() {
                             <TableRow
                               key={doc.id}
                               className={cn(
-                                "group cursor-pointer transition-all hover:bg-blue-50/30",
+                                "group cursor-pointer border-slate-100 transition-all hover:bg-blue-50/30",
                                 isSelected && "bg-blue-50/50"
                               )}
                               onClick={(e) => {
-                                // No navegar si se clickeó el checkbox o el menú
                                 if (
                                   (e.target as HTMLElement).closest('[role="checkbox"]') ||
                                   (e.target as HTMLElement).closest('[role="button"]')
@@ -1446,48 +1583,68 @@ function DocumentosContent() {
                                 }
                                 router.push(`/documentos/${doc.id}`)
                               }}
+                              style={{
+                                animation: `slideIn 0.3s ease-out ${index * 0.05}s both`
+                              }}
                             >
-                              <TableCell onClick={(e) => e.stopPropagation()}>
+                              <TableCell className="pl-6" onClick={(e) => e.stopPropagation()}>
                                 <Checkbox
                                   checked={isSelected}
                                   onCheckedChange={(checked) =>
                                     handleSelectDocument(doc.id, checked as boolean)
                                   }
                                   aria-label={`Seleccionar documento #${doc.number}`}
+                                  className="border-slate-300"
                                 />
                               </TableCell>
-                              <TableCell className="font-mono text-sm font-semibold text-gray-900">
+                              <TableCell className="font-mono text-sm font-bold text-slate-900">
                                 #{String(doc.number).padStart(5, "0")}
                               </TableCell>
                               <TableCell>
-                                <Badge 
-                                  variant="outline" 
-                                  className={cn("font-semibold border", typeConfig.color)}
-                                >
+                                <div className={cn(
+                                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold shadow-sm",
+                                  typeConfig.iconBg
+                                )}>
+                                  <div className={cn(
+                                    "h-1.5 w-1.5 rounded-full bg-gradient-to-r",
+                                    typeConfig.gradient
+                                  )}></div>
                                   {typeConfig.shortLabel}
-                                </Badge>
+                                </div>
                               </TableCell>
                               <TableCell>
-                                <div>
-                                  <p className="font-semibold text-gray-900">{doc.client.name}</p>
-                                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                    📱 {doc.client.phone}
+                                <div className="space-y-1">
+                                  <p className="font-semibold text-slate-900">{doc.client.name}</p>
+                                  <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                                    <span className="text-slate-400">📱</span>
+                                    {doc.client.phone}
                                   </p>
                                 </div>
                               </TableCell>
-                              <TableCell className="text-right font-bold tabular-nums text-gray-900">
-                                {formatCurrency(Number(doc.total))}
+                              <TableCell className="text-right">
+                                <span className={cn(
+                                  "bg-gradient-to-r bg-clip-text text-base font-bold tabular-nums text-transparent",
+                                  typeConfig.gradient
+                                )}>
+                                  {formatCurrency(Number(doc.total))}
+                                </span>
                               </TableCell>
                               <TableCell>
-                                <Badge variant={statusConfig.color} className="gap-1">
+                                <Badge 
+                                  variant={statusConfig.color} 
+                                  className={cn(
+                                    "gap-1.5 shadow-sm",
+                                    `bg-gradient-to-r ${statusConfig.gradient} text-white hover:opacity-90`
+                                  )}
+                                >
                                   <statusConfig.icon className="h-3 w-3" />
                                   {statusConfig.label}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
+                              <TableCell className="text-sm text-slate-600">
                                 {formatDate(new Date(doc.date))}
                               </TableCell>
-                              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                              <TableCell className="pr-6 text-right" onClick={(e) => e.stopPropagation()}>
                                 <DocumentActions
                                   document={doc}
                                   onSendClient={() => handleWhatsAppClient(doc)}
@@ -1508,11 +1665,19 @@ function DocumentosContent() {
 
                   {/* Pagination */}
                   {totalPages > 1 && (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t bg-gray-50/30 px-6 py-4">
-                      <p className="text-sm text-muted-foreground">
-                        Mostrando <span className="font-medium">{(page - 1) * PAGE_SIZE + 1}</span> -{" "}
-                        <span className="font-medium">{Math.min(page * PAGE_SIZE, total)}</span> de{" "}
-                        <span className="font-medium">{total}</span> documentos
+                    <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-100 bg-slate-50/30 px-6 py-5 sm:flex-row">
+                      <p className="text-sm text-slate-600">
+                        Mostrando{" "}
+                        <span className="font-semibold text-slate-900">
+                          {(page - 1) * PAGE_SIZE + 1}
+                        </span>{" "}
+                        -{" "}
+                        <span className="font-semibold text-slate-900">
+                          {Math.min(page * PAGE_SIZE, total)}
+                        </span>{" "}
+                        de{" "}
+                        <span className="font-semibold text-slate-900">{total}</span>{" "}
+                        documentos
                       </p>
                       <div className="flex items-center gap-2">
                         <Button
@@ -1520,10 +1685,10 @@ function DocumentosContent() {
                           size="sm"
                           onClick={() => setPage((p) => Math.max(1, p - 1))}
                           disabled={page === 1}
-                          className="gap-2"
+                          className="gap-2 border-slate-200 bg-white/50"
                         >
                           <ChevronLeft className="h-4 w-4" />
-                          Anterior
+                          <span className="hidden sm:inline">Anterior</span>
                         </Button>
                         <div className="flex items-center gap-1">
                           {[...Array(Math.min(5, totalPages))].map((_, i) => {
@@ -1545,8 +1710,9 @@ function DocumentosContent() {
                                 size="sm"
                                 onClick={() => setPage(pageNum)}
                                 className={cn(
-                                  "w-10",
-                                  page === pageNum && "bg-blue-600 hover:bg-blue-700"
+                                  "w-10 border-slate-200",
+                                  page === pageNum &&
+                                    "bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/25 hover:from-blue-700 hover:to-indigo-700"
                                 )}
                               >
                                 {pageNum}
@@ -1559,9 +1725,9 @@ function DocumentosContent() {
                           size="sm"
                           onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                           disabled={page === totalPages}
-                          className="gap-2"
+                          className="gap-2 border-slate-200 bg-white/50"
                         >
-                          Siguiente
+                          <span className="hidden sm:inline">Siguiente</span>
                           <ChevronRight className="h-4 w-4" />
                         </Button>
                       </div>
@@ -1573,21 +1739,21 @@ function DocumentosContent() {
           </Card>
 
           {/* Shortcuts Hint */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500">
             <div className="flex items-center gap-2">
-              <kbd className="rounded border border-gray-300 bg-gray-100 px-2 py-1 font-mono text-xs shadow-sm">
+              <kbd className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-xs shadow-sm">
                 N
               </kbd>
               <span>Nuevo documento</span>
             </div>
             <div className="flex items-center gap-2">
-              <kbd className="rounded border border-gray-300 bg-gray-100 px-2 py-1 font-mono text-xs shadow-sm">
+              <kbd className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-xs shadow-sm">
                 /
               </kbd>
               <span>Buscar</span>
             </div>
             <div className="flex items-center gap-2">
-              <kbd className="rounded border border-gray-300 bg-gray-100 px-2 py-1 font-mono text-xs shadow-sm">
+              <kbd className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-xs shadow-sm">
                 R
               </kbd>
               <span>Actualizar</span>
@@ -1622,6 +1788,19 @@ function DocumentosContent() {
           document={selectedDocument}
         />
       </div>
+
+      <style jsx global>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </TooltipProvider>
   )
 }
@@ -1632,16 +1811,19 @@ function DocumentosContent() {
 
 function DocumentosLoading() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 p-4 pt-20 md:p-8 md:pt-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 p-4 pt-20 md:p-8 md:pt-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-6">
-          <Skeleton className="h-9 w-48" />
-          <Skeleton className="mt-2 h-4 w-80" />
+        <div className="mb-8 space-y-3">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-14 w-14 rounded-2xl" />
+            <Skeleton className="h-10 w-64" />
+          </div>
+          <Skeleton className="h-5 w-96" />
         </div>
         <StatsSkeleton />
-        <div className="mt-6">
-          <Card>
-            <CardContent className="p-4">
+        <div className="mt-8">
+          <Card className="border-0 bg-white/80 shadow-xl backdrop-blur-sm">
+            <CardContent className="p-6">
               <TableSkeleton />
             </CardContent>
           </Card>

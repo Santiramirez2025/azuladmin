@@ -1,27 +1,48 @@
 @import "tailwindcss";
 
-/* Azul Colchones - Design System */
+/* Azul Colchones - Design System Profesional */
 :root {
   --background: 0 0% 100%;
-  --foreground: 224 71% 4%;
+  --foreground: 222 47% 11%;
   --card: 0 0% 100%;
-  --card-foreground: 224 71% 4%;
+  --card-foreground: 222 47% 11%;
   --popover: 0 0% 100%;
-  --popover-foreground: 224 71% 4%;
+  --popover-foreground: 222 47% 11%;
   --primary: 217 91% 60%;
-  --primary-foreground: 210 40% 98%;
+  --primary-foreground: 0 0% 100%;
   --secondary: 220 14% 96%;
-  --secondary-foreground: 220 9% 46%;
+  --secondary-foreground: 222 47% 11%;
   --muted: 220 14% 96%;
-  --muted-foreground: 220 9% 46%;
+  --muted-foreground: 215 16% 47%;
   --accent: 220 14% 96%;
-  --accent-foreground: 220 9% 46%;
+  --accent-foreground: 222 47% 11%;
   --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive-foreground: 0 0% 100%;
   --border: 220 13% 91%;
   --input: 220 13% 91%;
   --ring: 217 91% 60%;
   --radius: 0.5rem;
+  
+  /* Colores profesionales adicionales */
+  --slate-50: 210 40% 98%;
+  --slate-100: 214 32% 91%;
+  --slate-200: 213 27% 84%;
+  --slate-300: 212 23% 69%;
+  --slate-400: 215 20% 65%;
+  --slate-500: 215 16% 47%;
+  --slate-600: 215 19% 35%;
+  --slate-700: 215 25% 27%;
+  --slate-800: 217 33% 17%;
+  --slate-900: 222 47% 11%;
+  
+  --blue-50: 214 100% 97%;
+  --blue-100: 214 95% 93%;
+  --blue-200: 213 97% 87%;
+  --blue-300: 212 96% 78%;
+  --blue-400: 213 94% 68%;
+  --blue-500: 217 91% 60%;
+  --blue-600: 221 83% 53%;
+  --blue-700: 224 76% 48%;
 }
 
 @theme inline {
@@ -48,44 +69,31 @@
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 4px);
   --radius-xl: calc(var(--radius) + 8px);
-  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-}
-
-/* Dark mode support (optional, for future) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: 224 71% 4%;
-    --foreground: 210 40% 98%;
-    --card: 224 71% 4%;
-    --card-foreground: 210 40% 98%;
-    --popover: 224 71% 4%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 215 28% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 215 28% 17%;
-    --muted-foreground: 217 10% 64%;
-    --accent: 215 28% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 215 28% 17%;
-    --input: 215 28% 17%;
-    --ring: 217 91% 60%;
-  }
 }
 
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Utility classes for shadcn */
+/* Utility classes */
 * {
   border-color: hsl(var(--border));
+}
+
+/* Mejoras de legibilidad */
+.bg-clip-text {
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.text-transparent {
+  color: transparent;
 }
 
 /* Animation keyframes */
@@ -105,4 +113,51 @@ body {
   to {
     height: 0;
   }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--secondary));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Efectos de enfoque accesibles */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
 }

@@ -12,6 +12,12 @@ import {
   Check,
   Database,
   Trash2,
+  Settings,
+  Sparkles,
+  Shield,
+  Info,
+  AlertTriangle,
+  Zap,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -112,354 +118,441 @@ export default function ConfiguracionPage() {
   }
 
   return (
-    <div className="p-4 pt-20 md:p-8 md:pt-8">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Configuración</h1>
-        <p className="text-sm text-gray-500">
-          Configurá los datos de tu empresa y opciones del sistema
-        </p>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Datos de la Empresa */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Datos de la Empresa
-            </CardTitle>
-            <CardDescription>
-              Esta información aparecerá en los documentos
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label>Nombre de la Empresa</Label>
-              <Input
-                value={companyInfo.name}
-                onChange={(e) =>
-                  setCompanyInfo({ ...companyInfo, name: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>Dirección</Label>
-                <Input
-                  value={companyInfo.address}
-                  onChange={(e) =>
-                    setCompanyInfo({ ...companyInfo, address: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <Label>Ciudad</Label>
-                <Input
-                  value={companyInfo.city}
-                  onChange={(e) =>
-                    setCompanyInfo({ ...companyInfo, city: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label className="flex items-center gap-1">
-                  <Phone className="h-4 w-4" />
-                  Teléfono Fijo
-                </Label>
-                <Input
-                  value={companyInfo.phone}
-                  onChange={(e) =>
-                    setCompanyInfo({ ...companyInfo, phone: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <Label className="flex items-center gap-1">
-                  <MessageCircle className="h-4 w-4" />
-                  WhatsApp
-                </Label>
-                <Input
-                  value={companyInfo.whatsapp}
-                  onChange={(e) =>
-                    setCompanyInfo({ ...companyInfo, whatsapp: e.target.value })
-                  }
-                  placeholder="+54 9 353 555-1234"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label className="flex items-center gap-1">
-                  <Mail className="h-4 w-4" />
-                  Email
-                </Label>
-                <Input
-                  type="email"
-                  value={companyInfo.email}
-                  onChange={(e) =>
-                    setCompanyInfo({ ...companyInfo, email: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <Label>CUIT (opcional)</Label>
-                <Input
-                  value={companyInfo.cuit || ""}
-                  onChange={(e) =>
-                    setCompanyInfo({ ...companyInfo, cuit: e.target.value })
-                  }
-                  placeholder="XX-XXXXXXXX-X"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Tasas de Financiación */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Percent className="h-5 w-5" />
-              Recargos por Cuotas
-            </CardTitle>
-            <CardDescription>
-              Porcentaje de recargo para cada plan de cuotas
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>Contado (1 pago)</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={paymentRates["1"]}
-                    onChange={(e) =>
-                      setPaymentRates({
-                        ...paymentRates,
-                        "1": Number(e.target.value),
-                      })
-                    }
-                  />
-                  <span className="text-gray-500">%</span>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 p-4 pt-20 md:p-8 md:pt-8">
+      <div className="mx-auto max-w-7xl">
+        {/* Premium Header */}
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="absolute -inset-1 animate-pulse rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 opacity-20 blur"></div>
+                <div className="relative rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 p-3 shadow-lg shadow-blue-500/25">
+                  <Settings className="h-7 w-7 text-white" />
                 </div>
               </div>
               <div>
-                <Label>3 Cuotas</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={paymentRates["3"]}
-                    onChange={(e) =>
-                      setPaymentRates({
-                        ...paymentRates,
-                        "3": Number(e.target.value),
-                      })
-                    }
-                  />
-                  <span className="text-gray-500">%</span>
-                </div>
-              </div>
-              <div>
-                <Label>6 Cuotas</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={paymentRates["6"]}
-                    onChange={(e) =>
-                      setPaymentRates({
-                        ...paymentRates,
-                        "6": Number(e.target.value),
-                      })
-                    }
-                  />
-                  <span className="text-gray-500">%</span>
-                </div>
-              </div>
-              <div>
-                <Label>9 Cuotas</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={paymentRates["9"]}
-                    onChange={(e) =>
-                      setPaymentRates({
-                        ...paymentRates,
-                        "9": Number(e.target.value),
-                      })
-                    }
-                  />
-                  <span className="text-gray-500">%</span>
-                </div>
-              </div>
-              <div>
-                <Label>12 Cuotas</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={paymentRates["12"]}
-                    onChange={(e) =>
-                      setPaymentRates({
-                        ...paymentRates,
-                        "12": Number(e.target.value),
-                      })
-                    }
-                  />
-                  <span className="text-gray-500">%</span>
-                </div>
+                <h1 className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
+                  Configuración
+                </h1>
+                <p className="mt-1 text-sm text-slate-600 md:text-base">
+                  Personaliza tu sistema y datos empresariales
+                </p>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Preview de cuotas */}
-            <div className="mt-4 rounded-lg bg-gray-50 p-4">
-              <p className="mb-2 text-sm font-medium text-gray-700">
-                Vista previa (producto de $100.000):
-              </p>
-              <div className="space-y-1 text-sm">
-                {Object.entries(paymentRates).map(([cuotas, rate]) => {
-                  const total = 100000 * (1 + rate / 100)
-                  const cuota = total / Number(cuotas)
-                  return (
-                    <div key={cuotas} className="flex justify-between">
-                      <span className="text-gray-600">
-                        {cuotas === "1" ? "Contado" : `${cuotas} cuotas`}
-                        {rate > 0 && (
-                          <span className="text-orange-600"> (+{rate}%)</span>
-                        )}
-                      </span>
-                      <span className="font-medium">
-                        {cuotas === "1"
-                          ? `$${total.toLocaleString("es-AR")}`
-                          : `${cuotas} x $${Math.round(cuota).toLocaleString("es-AR")}`}
-                      </span>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Datos de la Empresa - Enhanced */}
+          <div className="group relative" style={{ animation: 'slideIn 0.4s ease-out' }}>
+            <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
+            <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-blue-500/5 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10">
+              <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br from-blue-500/10 to-indigo-600/10 blur-3xl"></div>
+              <CardHeader className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-blue-50/50 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-2.5 shadow-lg shadow-blue-500/20">
+                    <Building2 className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-bold text-slate-900">
+                      Datos de la Empresa
+                    </CardTitle>
+                    <CardDescription className="text-sm">
+                      Esta información aparecerá en los documentos
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="relative space-y-5 p-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-700">Nombre de la Empresa</Label>
+                  <Input
+                    value={companyInfo.name}
+                    onChange={(e) =>
+                      setCompanyInfo({ ...companyInfo, name: e.target.value })
+                    }
+                    className="border-slate-200 bg-white/50 transition-all focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                      <MapPin className="h-3.5 w-3.5 text-slate-500" />
+                      Dirección
+                    </Label>
+                    <Input
+                      value={companyInfo.address}
+                      onChange={(e) =>
+                        setCompanyInfo({ ...companyInfo, address: e.target.value })
+                      }
+                      className="border-slate-200 bg-white/50 transition-all focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                      <MapPin className="h-3.5 w-3.5 text-slate-500" />
+                      Ciudad
+                    </Label>
+                    <Input
+                      value={companyInfo.city}
+                      onChange={(e) =>
+                        setCompanyInfo({ ...companyInfo, city: e.target.value })
+                      }
+                      className="border-slate-200 bg-white/50 transition-all focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                      <Phone className="h-3.5 w-3.5 text-slate-500" />
+                      Teléfono Fijo
+                    </Label>
+                    <Input
+                      value={companyInfo.phone}
+                      onChange={(e) =>
+                        setCompanyInfo({ ...companyInfo, phone: e.target.value })
+                      }
+                      className="border-slate-200 bg-white/50 transition-all focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                      <MessageCircle className="h-3.5 w-3.5 text-emerald-500" />
+                      WhatsApp
+                    </Label>
+                    <Input
+                      value={companyInfo.whatsapp}
+                      onChange={(e) =>
+                        setCompanyInfo({ ...companyInfo, whatsapp: e.target.value })
+                      }
+                      placeholder="+54 9 353 555-1234"
+                      className="border-slate-200 bg-white/50 transition-all focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                      <Mail className="h-3.5 w-3.5 text-slate-500" />
+                      Email
+                    </Label>
+                    <Input
+                      type="email"
+                      value={companyInfo.email}
+                      onChange={(e) =>
+                        setCompanyInfo({ ...companyInfo, email: e.target.value })
+                      }
+                      className="border-slate-200 bg-white/50 transition-all focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                      <Shield className="h-3.5 w-3.5 text-slate-500" />
+                      CUIT (opcional)
+                    </Label>
+                    <Input
+                      value={companyInfo.cuit || ""}
+                      onChange={(e) =>
+                        setCompanyInfo({ ...companyInfo, cuit: e.target.value })
+                      }
+                      placeholder="XX-XXXXXXXX-X"
+                      className="border-slate-200 bg-white/50 transition-all focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Tasas de Financiación - Enhanced */}
+          <div className="group relative" style={{ animation: 'slideIn 0.5s ease-out' }}>
+            <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
+            <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-emerald-500/5 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-500/10">
+              <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br from-emerald-500/10 to-green-600/10 blur-3xl"></div>
+              <CardHeader className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-emerald-50/50 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 p-2.5 shadow-lg shadow-emerald-500/20">
+                    <Percent className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-bold text-slate-900">
+                      Recargos por Cuotas
+                    </CardTitle>
+                    <CardDescription className="text-sm">
+                      Porcentaje de recargo para cada plan de cuotas
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="relative space-y-5 p-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {[
+                    { key: "1", label: "Contado (1 pago)" },
+                    { key: "3", label: "3 Cuotas" },
+                    { key: "6", label: "6 Cuotas" },
+                    { key: "9", label: "9 Cuotas" },
+                    { key: "12", label: "12 Cuotas" },
+                  ].map(({ key, label }) => (
+                    <div key={key} className="space-y-2">
+                      <Label className="text-sm font-semibold text-slate-700">{label}</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={paymentRates[key]}
+                          onChange={(e) =>
+                            setPaymentRates({
+                              ...paymentRates,
+                              [key]: Number(e.target.value),
+                            })
+                          }
+                          className="border-slate-200 bg-white/50 transition-all focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                        />
+                        <span className="text-sm font-semibold text-slate-500">%</span>
+                      </div>
                     </div>
-                  )
-                })}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                  ))}
+                </div>
 
-        {/* Base de Datos */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              Base de Datos
-            </CardTitle>
-            <CardDescription>
-              Gestión de datos del sistema
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-lg border p-4">
-              <h4 className="mb-2 font-medium">Cargar Datos de Ejemplo</h4>
-              <p className="mb-4 text-sm text-gray-500">
-                Carga productos PIERO de ejemplo para empezar a usar el sistema.
-                Esto no afecta datos existentes.
-              </p>
-              <Button
-                onClick={handleSeedDatabase}
-                disabled={seedStatus === "loading"}
-                variant={seedStatus === "success" ? "outline" : "default"}
-              >
-                {seedStatus === "loading" && "Cargando..."}
-                {seedStatus === "success" && (
-                  <>
-                    <Check className="mr-2 h-4 w-4" />
-                    ¡Datos cargados!
-                  </>
-                )}
-                {seedStatus === "error" && "Error - Reintentar"}
-                {seedStatus === "idle" && (
-                  <>
-                    <Database className="mr-2 h-4 w-4" />
-                    Cargar Productos Demo
-                  </>
-                )}
-              </Button>
-            </div>
+                {/* Enhanced Preview */}
+                <div className="mt-6 overflow-hidden rounded-xl border border-slate-200/50 bg-gradient-to-br from-slate-50/50 to-emerald-50/30 p-5 shadow-inner">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-emerald-600" />
+                    <p className="text-sm font-bold text-slate-700">
+                      Vista previa (producto de $100.000)
+                    </p>
+                  </div>
+                  <div className="space-y-2.5">
+                    {Object.entries(paymentRates).map(([cuotas, rate]) => {
+                      const total = 100000 * (1 + rate / 100)
+                      const cuota = total / Number(cuotas)
+                      return (
+                        <div
+                          key={cuotas}
+                          className="flex items-center justify-between rounded-lg bg-white/60 px-4 py-2.5 backdrop-blur-sm transition-all hover:bg-white/80"
+                        >
+                          <span className="text-sm font-medium text-slate-700">
+                            {cuotas === "1" ? "Contado" : `${cuotas} cuotas`}
+                            {rate > 0 && (
+                              <span className="ml-1.5 inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">
+                                +{rate}%
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-sm font-bold text-slate-900">
+                            {cuotas === "1"
+                              ? `$${total.toLocaleString("es-AR")}`
+                              : `${cuotas} x $${Math.round(cuota).toLocaleString("es-AR")}`}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-              <h4 className="mb-2 font-medium text-red-800">Zona de Peligro</h4>
-              <p className="mb-4 text-sm text-red-600">
-                Estas acciones son irreversibles. Asegurate de tener un backup.
-              </p>
-              <Button variant="destructive" size="sm" disabled>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Limpiar Base de Datos (Próximamente)
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Base de Datos - Enhanced */}
+          <div className="group relative" style={{ animation: 'slideIn 0.6s ease-out' }}>
+            <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
+            <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-violet-500/5 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl hover:shadow-violet-500/10">
+              <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br from-violet-500/10 to-purple-600/10 blur-3xl"></div>
+              <CardHeader className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-violet-50/50 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 p-2.5 shadow-lg shadow-violet-500/20">
+                    <Database className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-bold text-slate-900">
+                      Base de Datos
+                    </CardTitle>
+                    <CardDescription className="text-sm">
+                      Gestión de datos del sistema
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="relative space-y-4 p-6">
+                <div className="overflow-hidden rounded-xl border border-slate-200/50 bg-gradient-to-br from-white/60 to-violet-50/30 p-5 backdrop-blur-sm">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-violet-600" />
+                    <h4 className="font-bold text-slate-900">Cargar Datos de Ejemplo</h4>
+                  </div>
+                  <p className="mb-4 text-sm leading-relaxed text-slate-600">
+                    Carga productos PIERO de ejemplo para empezar a usar el sistema.
+                    Esto no afecta datos existentes.
+                  </p>
+                  <Button
+                    onClick={handleSeedDatabase}
+                    disabled={seedStatus === "loading"}
+                    variant={seedStatus === "success" ? "outline" : "default"}
+                    className={`relative overflow-hidden font-semibold shadow-lg transition-all ${
+                      seedStatus === "success"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                        : "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-violet-500/25 hover:shadow-xl hover:shadow-violet-500/40"
+                    }`}
+                  >
+                    {seedStatus === "loading" && (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        Cargando...
+                      </>
+                    )}
+                    {seedStatus === "success" && (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        ¡Datos cargados!
+                      </>
+                    )}
+                    {seedStatus === "error" && (
+                      <>
+                        <AlertTriangle className="mr-2 h-4 w-4" />
+                        Error - Reintentar
+                      </>
+                    )}
+                    {seedStatus === "idle" && (
+                      <>
+                        <Database className="mr-2 h-4 w-4" />
+                        Cargar Productos Demo
+                      </>
+                    )}
+                  </Button>
+                </div>
 
-        {/* Información del Sistema */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Información del Sistema</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500">Versión</span>
-                <Badge>1.0.0</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500">Framework</span>
-                <Badge variant="outline">Next.js 16</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500">Base de Datos</span>
-                <Badge variant="outline">PostgreSQL + Prisma</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500">Hospedaje</span>
-                <Badge variant="outline">Vercel</Badge>
-              </div>
-            </div>
+                <div className="overflow-hidden rounded-xl border-2 border-red-200/60 bg-gradient-to-br from-red-50 to-orange-50/50 p-5 backdrop-blur-sm">
+                  <div className="mb-3 flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                    <h4 className="font-bold text-red-800">Zona de Peligro</h4>
+                  </div>
+                  <p className="mb-4 text-sm leading-relaxed text-red-700">
+                    Estas acciones son irreversibles. Asegurate de tener un backup.
+                  </p>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled
+                    className="font-semibold opacity-50"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Limpiar Base de Datos (Próximamente)
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-            <div className="mt-6 rounded-lg bg-blue-50 p-4">
-              <p className="text-sm text-blue-800">
-                <strong>Azul Colchones</strong> - Sistema de Gestión Comercial
-                <br />
-                Desarrollado para {companyInfo.name}
-                <br />
-                {companyInfo.city}, {companyInfo.province}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Información del Sistema - Enhanced */}
+          <div className="group relative" style={{ animation: 'slideIn 0.7s ease-out' }}>
+            <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
+            <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-blue-500/5 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10">
+              <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br from-blue-500/10 to-cyan-600/10 blur-3xl"></div>
+              <CardHeader className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-blue-50/50 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 p-2.5 shadow-lg shadow-blue-500/20">
+                    <Info className="h-5 w-5 text-white" />
+                  </div>
+                  <CardTitle className="text-lg font-bold text-slate-900">
+                    Información del Sistema
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="relative p-6">
+                <div className="space-y-3">
+                  {[
+                    { label: "Versión", value: "1.0.0", variant: "default" as const },
+                    { label: "Framework", value: "Next.js 16", variant: "outline" as const },
+                    { label: "Base de Datos", value: "PostgreSQL + Prisma", variant: "outline" as const },
+                    { label: "Hospedaje", value: "Vercel", variant: "outline" as const },
+                  ].map(({ label, value, variant }) => (
+                    <div
+                      key={label}
+                      className="flex items-center justify-between rounded-lg bg-gradient-to-r from-slate-50/50 to-transparent px-4 py-3 transition-all hover:bg-slate-100/50"
+                    >
+                      <span className="text-sm font-medium text-slate-600">{label}</span>
+                      <Badge
+                        variant={variant}
+                        className="shadow-sm font-semibold"
+                      >
+                        {value}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 overflow-hidden rounded-xl border border-blue-200/50 bg-gradient-to-br from-blue-50 to-indigo-50/50 p-5 shadow-inner">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-blue-600" />
+                    <p className="text-sm font-bold text-blue-900">
+                      Azul Colchones
+                    </p>
+                  </div>
+                  <p className="text-sm leading-relaxed text-blue-800">
+                    Sistema de Gestión Comercial
+                    <br />
+                    <span className="font-semibold">Desarrollado para {companyInfo.name}</span>
+                    <br />
+                    {companyInfo.city}, {companyInfo.province}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Enhanced Floating Save Button */}
+        <div className="fixed bottom-6 right-6 z-50">
+          <div className="relative">
+            {!saved && (
+              <div className="absolute -inset-1 animate-pulse rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 opacity-30 blur-lg"></div>
+            )}
+            <Button
+              size="lg"
+              onClick={handleSave}
+              disabled={isSaving}
+              className={`relative overflow-hidden px-8 py-6 text-base font-bold shadow-2xl transition-all ${
+                saved
+                  ? "bg-gradient-to-r from-emerald-500 to-green-600 shadow-emerald-500/40"
+                  : "bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/40 hover:shadow-blue-500/60"
+              }`}
+            >
+              {isSaving ? (
+                <>
+                  <div className="mr-2 h-5 w-5 animate-spin rounded-full border-3 border-white border-t-transparent"></div>
+                  Guardando...
+                </>
+              ) : saved ? (
+                <>
+                  <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 opacity-0 transition-opacity group-hover:opacity-100"></div>
+                  <Check className="relative mr-2 h-5 w-5" />
+                  <span className="relative">¡Guardado!</span>
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-5 w-5" />
+                  Guardar Cambios
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* Botón Guardar Flotante */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <Button
-          size="lg"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="shadow-lg"
-        >
-          {isSaving ? (
-            "Guardando..."
-          ) : saved ? (
-            <>
-              <Check className="mr-2 h-4 w-4" />
-              Guardado
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              Guardar Cambios
-            </>
-          )}
-        </Button>
-      </div>
+      <style jsx global>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   )
 }

@@ -15,6 +15,9 @@ import {
   CreditCard,
   MessageSquare,
   AlertCircle,
+  Sparkles,
+  CheckCircle2,
+  Package,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -67,10 +70,10 @@ type PaymentMethod = "CONTADO" | "CUOTAS_3" | "CUOTAS_6" | "CUOTAS_9" | "CUOTAS_
 // Constants
 // ============================================================================
 
-const DOCUMENT_TYPES: { value: DocumentType; label: string; description: string }[] = [
-  { value: "PRESUPUESTO", label: "Presupuesto", description: "Cotización para el cliente" },
-  { value: "RECIBO", label: "Recibo", description: "Comprobante de pago" },
-  { value: "REMITO", label: "Remito", description: "Comprobante de entrega" },
+const DOCUMENT_TYPES: { value: DocumentType; label: string; description: string; icon: any }[] = [
+  { value: "PRESUPUESTO", label: "Presupuesto", description: "Cotización para el cliente", icon: FileText },
+  { value: "RECIBO", label: "Recibo", description: "Comprobante de pago", icon: CreditCard },
+  { value: "REMITO", label: "Remito", description: "Comprobante de entrega", icon: Truck },
 ]
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string; surcharge: number }[] = [
@@ -88,8 +91,7 @@ const SHIPPING_OPTIONS = [
   "Envío interior (+costo)",
 ]
 
-// Número de WhatsApp del repartidor
-const DELIVERY_WHATSAPP = "5493535694658" // +54 9 3535 69-4658
+const DELIVERY_WHATSAPP = "5493535694658"
 
 // ============================================================================
 // Loading Skeleton
@@ -97,24 +99,25 @@ const DELIVERY_WHATSAPP = "5493535694658" // +54 9 3535 69-4658
 
 function FormSkeleton() {
   return (
-    <div className="min-h-screen bg-gray-50/50 p-4 pt-20 md:p-8 md:pt-8">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex items-center gap-4">
-          <Skeleton className="h-10 w-10" />
-          <div>
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="mt-1 h-4 w-64" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 p-4 pt-20 md:p-8 md:pt-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6 flex items-center gap-3 md:mb-8">
+          <Skeleton className="h-10 w-10 rounded-xl md:h-12 md:w-12" />
+          <div className="flex-1">
+            <Skeleton className="mb-2 h-6 w-40 md:h-8 md:w-56" />
+            <Skeleton className="h-3 w-52 md:h-4 md:w-72" />
           </div>
         </div>
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
-            <Skeleton className="h-40 w-full rounded-lg" />
-            <Skeleton className="h-32 w-full rounded-lg" />
-            <Skeleton className="h-64 w-full rounded-lg" />
+        <div className="space-y-4 md:grid md:gap-6 md:space-y-0 lg:grid-cols-3">
+          <div className="space-y-4 md:space-y-6 lg:col-span-2">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-40 w-full rounded-2xl md:h-48" />
+            ))}
           </div>
-          <div className="space-y-6">
-            <Skeleton className="h-48 w-full rounded-lg" />
-            <Skeleton className="h-32 w-full rounded-lg" />
+          <div className="space-y-4 md:space-y-6">
+            {[1, 2].map((i) => (
+              <Skeleton key={i} className="h-48 w-full rounded-2xl md:h-56" />
+            ))}
           </div>
         </div>
       </div>
@@ -163,24 +166,28 @@ function ClientSearch({ value, onChange }: ClientSearchProps) {
 
   if (value) {
     return (
-      <div className="flex items-center justify-between rounded-lg border bg-blue-50/50 p-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-            <User className="h-5 w-5 text-blue-600" />
+      <div className="group relative overflow-hidden rounded-xl border border-blue-200/50 bg-gradient-to-br from-blue-50/80 to-indigo-50/50 p-3.5 shadow-sm transition-all hover:shadow-md md:p-4">
+        <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-gradient-to-br from-blue-500/10 to-indigo-600/10 blur-2xl md:h-24 md:w-24"></div>
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-3">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/25 md:h-12 md:w-12">
+              <User className="h-5 w-5 text-white md:h-6 md:w-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-slate-900 md:text-base">{value.name}</p>
+              <p className="truncate text-xs text-slate-600 md:text-sm">{value.phone}</p>
+            </div>
           </div>
-          <div>
-            <p className="font-medium">{value.name}</p>
-            <p className="text-sm text-muted-foreground">{value.phone}</p>
-          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onChange(null)}
+            className="flex-shrink-0 text-xs font-semibold text-blue-600 hover:bg-blue-100 hover:text-blue-700 md:text-sm"
+          >
+            Cambiar
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => onChange(null)}
-        >
-          Cambiar
-        </Button>
       </div>
     )
   }
@@ -192,33 +199,41 @@ function ClientSearch({ value, onChange }: ClientSearchProps) {
           type="button"
           variant="outline"
           role="combobox"
-          className="w-full justify-start text-muted-foreground"
+          className="w-full justify-start border-slate-200 bg-white/50 text-sm font-medium text-slate-600 transition-all hover:border-blue-300 hover:bg-blue-50/50 md:text-base"
         >
           <User className="mr-2 h-4 w-4" />
           Buscar cliente...
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[350px] p-0" align="start">
+      <PopoverContent className="w-[calc(100vw-2rem)] border-slate-200/50 bg-white/95 p-0 shadow-2xl shadow-slate-900/10 backdrop-blur-xl sm:w-[400px]" align="start">
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Nombre o teléfono..."
             value={search}
             onValueChange={setSearch}
+            className="border-0"
           />
           <CommandList>
             {isLoading && (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-5 w-5 animate-spin" />
+              <div className="flex items-center justify-center py-8">
+                <div className="relative h-8 w-8">
+                  <div className="absolute inset-0 animate-spin rounded-full border-4 border-blue-200"></div>
+                  <div className="absolute inset-0 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+                </div>
               </div>
             )}
             {!isLoading && search.length >= 2 && clients.length === 0 && (
               <CommandEmpty>
-                <p className="text-sm text-muted-foreground">No se encontraron clientes</p>
-                <Link href="/clientes/nuevo">
-                  <Button size="sm" variant="link" className="mt-2">
-                    + Crear nuevo cliente
-                  </Button>
-                </Link>
+                <div className="py-8 text-center">
+                  <User className="mx-auto mb-3 h-12 w-12 text-slate-300" />
+                  <p className="mb-1 text-sm font-semibold text-slate-700 md:text-base">No se encontraron clientes</p>
+                  <p className="mb-4 text-xs text-slate-500 md:text-sm">Crea un nuevo cliente para continuar</p>
+                  <Link href="/clientes/nuevo">
+                    <Button size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 text-sm font-semibold shadow-lg shadow-blue-500/25">
+                      + Crear nuevo cliente
+                    </Button>
+                  </Link>
+                </div>
               </CommandEmpty>
             )}
             {!isLoading && clients.length > 0 && (
@@ -232,12 +247,18 @@ function ClientSearch({ value, onChange }: ClientSearchProps) {
                       setOpen(false)
                       setSearch("")
                     }}
+                    className="cursor-pointer rounded-lg px-3 py-3"
                   >
-                    <div>
-                      <p className="font-medium">{client.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {client.phone} · {client.city}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100">
+                        <User className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">{client.name}</p>
+                        <p className="truncate text-xs text-slate-500">
+                          {client.phone} · {client.city}
+                        </p>
+                      </div>
                     </div>
                   </CommandItem>
                 ))}
@@ -251,14 +272,13 @@ function ClientSearch({ value, onChange }: ClientSearchProps) {
 }
 
 // ============================================================================
-// Main Form Content (uses useSearchParams)
+// Main Form Content
 // ============================================================================
 
 function NuevoDocumentoContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // Form state
   const [type, setType] = useState<DocumentType>(
     (searchParams.get("tipo")?.toUpperCase() as DocumentType) || "PRESUPUESTO"
   )
@@ -270,20 +290,15 @@ function NuevoDocumentoContent() {
   const [observations, setObservations] = useState("")
   const [internalNotes, setInternalNotes] = useState("")
   const [validDays, setValidDays] = useState(7)
-
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [saveAction, setSaveAction] = useState<"draft" | "send">("draft")
 
-  // Calculations
   const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0)
   const surchargeRate = PAYMENT_METHODS.find((p) => p.value === paymentMethod)?.surcharge || 0
   const surcharge = type === "RECIBO" ? subtotal * (surchargeRate / 100) : 0
   const total = subtotal + surcharge + shippingCost
-
-  // Validation
   const isValid = client && items.length > 0
 
-  // Submit
   const handleSubmit = async (action: "draft" | "send") => {
     if (!client || items.length === 0) {
       toast.error("Completá cliente y productos")
@@ -294,7 +309,6 @@ function NuevoDocumentoContent() {
     setSaveAction(action)
 
     try {
-      // Preparar items para la API
       const apiItems = items.map((item) => ({
         variantId: item.variantId || undefined,
         isCustom: item.isCustom,
@@ -308,13 +322,6 @@ function NuevoDocumentoContent() {
         type === "PRESUPUESTO"
           ? new Date(Date.now() + validDays * 24 * 60 * 60 * 1000).toISOString()
           : undefined
-
-      console.log("📤 Enviando documento a la API:", {
-        clientId: client.id,
-        type,
-        itemsCount: apiItems.length,
-        total,
-      })
 
       const res = await fetch("/api/documents", {
         method: "POST",
@@ -335,34 +342,23 @@ function NuevoDocumentoContent() {
 
       if (!res.ok) {
         const error = await res.json()
-        console.error("❌ Error de la API:", error)
         throw new Error(error.error || "Error al crear documento")
       }
 
       const document = await res.json()
-      console.log("✅ Documento creado:", document.id)
 
-      // Si es "send", actualizar estado y abrir WhatsApp
       if (action === "send") {
-        console.log("📤 Actualizando estado a SENT...")
-        
         try {
           await fetch(`/api/documents/${document.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ status: "SENT" }),
           })
-          console.log("✅ Estado actualizado a SENT")
         } catch (error) {
-          console.error("⚠️ Error al actualizar estado:", error)
-          // Continuar con el envío de WhatsApp aunque falle la actualización
+          console.error("Error al actualizar estado:", error)
         }
 
-        // 🚚 LÓGICA PARA REMITO: Enviar al repartidor SIN precios
         if (type === "REMITO") {
-          console.log("🚚 Preparando mensaje de REMITO para repartidor...")
-          
-          // Construir lista de productos sin precios
           const productList = items
             .map((item, index) => {
               return `${index + 1}. ${item.productName}${
@@ -384,27 +380,9 @@ function NuevoDocumentoContent() {
             deliveryMessage
           )}`
           
-          console.log("📱 Abriendo WhatsApp del repartidor:", DELIVERY_WHATSAPP)
-          console.log("📝 Mensaje:", deliveryMessage)
-          
-          const whatsappWindow = window.open(deliveryWhatsappUrl, "_blank")
-          
-          if (whatsappWindow) {
-            console.log("✅ Ventana de WhatsApp abierta")
-            toast.success("Remito enviado al repartidor")
-          } else {
-            console.error("❌ Pop-up bloqueado. Intentando de nuevo...")
-            toast.error("Por favor, permite pop-ups para enviar el remito")
-            // Intentar abrir en la misma pestaña como fallback
-            setTimeout(() => {
-              window.location.href = deliveryWhatsappUrl
-            }, 1000)
-          }
-        } 
-        // 💰 LÓGICA PARA PRESUPUESTO/RECIBO: Enviar al cliente CON precios
-        else {
-          console.log("💰 Preparando mensaje para cliente...")
-          
+          window.open(deliveryWhatsappUrl, "_blank")
+          toast.success("Remito enviado al repartidor")
+        } else {
           const message = `¡Hola ${client.name}! 👋\n\nTe envío tu *${
             type === "PRESUPUESTO" ? "Presupuesto" : "Recibo"
           } #${String(document.number).padStart(5, "0")}*\n\n💰 Total: *${formatCurrency(
@@ -412,26 +390,10 @@ function NuevoDocumentoContent() {
           )}*\n\n¡Gracias por tu confianza!`
 
           const clientPhone = client.phone.replace(/\D/g, "")
-          const whatsappUrl = `https://wa.me/${clientPhone}?text=${encodeURIComponent(
-            message
-          )}`
+          const whatsappUrl = `https://wa.me/${clientPhone}?text=${encodeURIComponent(message)}`
           
-          console.log("📱 Abriendo WhatsApp del cliente:", clientPhone)
-          console.log("📝 Mensaje:", message)
-          
-          const whatsappWindow = window.open(whatsappUrl, "_blank")
-          
-          if (whatsappWindow) {
-            console.log("✅ Ventana de WhatsApp abierta")
-            toast.success("Documento enviado al cliente")
-          } else {
-            console.error("❌ Pop-up bloqueado. Intentando de nuevo...")
-            toast.error("Por favor, permite pop-ups para enviar el documento")
-            // Intentar abrir en la misma pestaña como fallback
-            setTimeout(() => {
-              window.location.href = whatsappUrl
-            }, 1000)
-          }
+          window.open(whatsappUrl, "_blank")
+          toast.success("Documento enviado al cliente")
         }
       } else {
         toast.success("Borrador guardado")
@@ -439,7 +401,6 @@ function NuevoDocumentoContent() {
 
       router.push(`/documentos/${document.id}`)
     } catch (error) {
-      console.error("💥 Error al guardar documento:", error)
       toast.error(error instanceof Error ? error.message : "Error al guardar")
     } finally {
       setIsSubmitting(false)
@@ -447,324 +408,451 @@ function NuevoDocumentoContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-4 pt-20 md:p-8 md:pt-8">
-      <div className="mx-auto max-w-5xl">
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 p-4 pt-20 md:p-8 md:pt-8">
+      <div className="mx-auto max-w-6xl">
+        {/* Header Responsive */}
+        <div className="mb-6 md:mb-8">
+          <div className="mb-4 flex items-center gap-3 md:mb-6 md:gap-4">
             <Link href="/documentos">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
+              <div className="group relative">
+                <div className="absolute -inset-1 animate-pulse rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 opacity-20 blur transition group-hover:opacity-30"></div>
+                <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl border border-slate-200/50 bg-white/80 shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all hover:scale-105 hover:border-blue-300 hover:bg-blue-50 md:h-12 md:w-12">
+                  <ArrowLeft className="h-4 w-4 md:h-5 md:w-5" />
+                </Button>
+              </div>
             </Link>
-            <div>
-              <h1 className="text-2xl font-bold">Nuevo Documento</h1>
-              <p className="text-sm text-muted-foreground">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-blue-600 md:h-6 md:w-6" />
+                <h1 className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-xl font-bold text-transparent md:text-3xl">
+                  Nuevo Documento
+                </h1>
+              </div>
+              <p className="mt-1 text-xs text-slate-600 md:text-sm">
                 Creá un presupuesto, recibo o remito
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Action Buttons - Sticky en mobile */}
+          <div className="fixed bottom-0 left-0 right-0 z-40 flex gap-2 border-t border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-900/10 backdrop-blur-xl md:relative md:z-auto md:border-0 md:bg-transparent md:p-0 md:shadow-none">
             <Button
               variant="outline"
               onClick={() => handleSubmit("draft")}
               disabled={!isValid || isSubmitting}
+              className="flex-1 border-slate-200 bg-white font-semibold shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 md:flex-none md:px-6"
             >
               {isSubmitting && saveAction === "draft" && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              <Save className="mr-2 h-4 w-4" />
-              Guardar Borrador
+              {!isSubmitting && <Save className="mr-2 h-4 w-4" />}
+              <span className="hidden md:inline">Guardar Borrador</span>
+              <span className="md:hidden">Guardar</span>
             </Button>
             <Button
               onClick={() => handleSubmit("send")}
               disabled={!isValid || isSubmitting}
               className={cn(
+                "relative flex-1 overflow-hidden font-bold shadow-2xl transition-all disabled:opacity-50 md:flex-none md:px-6",
                 type === "REMITO" 
-                  ? "bg-orange-600 hover:bg-orange-700" 
-                  : "bg-green-600 hover:bg-green-700"
+                  ? "bg-gradient-to-r from-orange-500 to-amber-600 shadow-orange-500/30" 
+                  : "bg-gradient-to-r from-emerald-500 to-green-600 shadow-emerald-500/30"
               )}
             >
               {isSubmitting && saveAction === "send" && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              <Send className="mr-2 h-4 w-4" />
-              {type === "REMITO" ? "Enviar a Reparto" : "Guardar y Enviar"}
+              {!isSubmitting && <Send className="mr-2 h-4 w-4" />}
+              <span className="hidden md:inline">
+                {type === "REMITO" ? "Enviar a Reparto" : "Guardar y Enviar"}
+              </span>
+              <span className="md:hidden">Enviar</span>
             </Button>
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        {/* Content Grid - Responsive */}
+        <div className="space-y-4 pb-24 md:grid md:gap-6 md:space-y-0 md:pb-0 lg:grid-cols-3">
           {/* Main Content */}
-          <div className="space-y-6 lg:col-span-2">
-            {/* Document Type */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <FileText className="h-5 w-5" />
-                  Tipo de Documento
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {DOCUMENT_TYPES.map((docType) => (
-                    <button
-                      key={docType.value}
-                      type="button"
-                      onClick={() => setType(docType.value)}
-                      className={cn(
-                        "rounded-lg border-2 p-4 text-left transition-all",
-                        type === docType.value
-                          ? docType.value === "REMITO"
-                            ? "border-orange-600 bg-orange-50"
-                            : "border-blue-600 bg-blue-50"
-                          : "border-gray-200 hover:border-gray-300"
-                      )}
-                    >
-                      <p className="font-medium">{docType.label}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {docType.description}
-                      </p>
-                      {docType.value === "REMITO" && (
-                        <Badge variant="secondary" className="mt-2 bg-orange-100 text-orange-700">
-                          Se envía a reparto
-                        </Badge>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+          <div className="space-y-4 md:space-y-6 lg:col-span-2">
+            {/* Document Type - Mobile Optimized */}
+            <div className="group relative" style={{ animation: 'slideIn 0.3s ease-out' }}>
+              <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
+              <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-blue-500/5 backdrop-blur-sm">
+                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/10 to-indigo-600/10 blur-3xl md:h-40 md:w-40"></div>
+                <CardHeader className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-blue-50/50 p-4 md:p-6 md:pb-4">
+                  <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900 md:gap-2.5 md:text-lg">
+                    <div className="rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 p-1.5 shadow-lg shadow-blue-500/20 md:p-2">
+                      <FileText className="h-4 w-4 text-white md:h-5 md:w-5" />
+                    </div>
+                    Tipo de Documento
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="relative p-4 md:p-6">
+                  <div className="grid gap-3 sm:grid-cols-3 md:gap-4">
+                    {DOCUMENT_TYPES.map((docType) => {
+                      const Icon = docType.icon
+                      const isSelected = type === docType.value
+                      const isRemito = docType.value === "REMITO"
+                      
+                      return (
+                        <button
+                          key={docType.value}
+                          type="button"
+                          onClick={() => setType(docType.value)}
+                          className={cn(
+                            "group relative overflow-hidden rounded-xl border-2 p-3.5 text-left transition-all duration-300 md:p-5",
+                            isSelected
+                              ? isRemito
+                                ? "border-orange-400 bg-gradient-to-br from-orange-50 to-amber-50/50 shadow-lg shadow-orange-500/20"
+                                : "border-blue-400 bg-gradient-to-br from-blue-50 to-indigo-50/50 shadow-lg shadow-blue-500/20"
+                              : "border-slate-200 bg-white/50 hover:border-slate-300 hover:bg-slate-50/50"
+                          )}
+                        >
+                          <div className="relative">
+                            <div className={cn(
+                              "mb-2.5 inline-flex rounded-lg p-2 shadow-md transition-transform group-hover:scale-110 md:mb-3 md:p-2.5",
+                              isSelected
+                                ? isRemito
+                                  ? "bg-gradient-to-br from-orange-500 to-amber-600 shadow-orange-500/30"
+                                  : "bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-500/30"
+                                : "bg-slate-100"
+                            )}>
+                              <Icon className={cn("h-4 w-4 md:h-5 md:w-5", isSelected ? "text-white" : "text-slate-600")} />
+                            </div>
+                            <p className="mb-0.5 text-sm font-bold text-slate-900 md:mb-1 md:text-base">{docType.label}</p>
+                            <p className="text-[10px] text-slate-600 md:text-xs">{docType.description}</p>
+                            {isRemito && (
+                              <Badge variant="secondary" className="mt-2 bg-orange-100 text-[10px] font-semibold text-orange-700 shadow-sm md:mt-3 md:text-xs">
+                                Se envía a reparto
+                              </Badge>
+                            )}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Client */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <User className="h-5 w-5" />
-                  Cliente
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ClientSearch value={client} onChange={setClient} />
-              </CardContent>
-            </Card>
+            <div className="group relative" style={{ animation: 'slideIn 0.4s ease-out' }}>
+              <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
+              <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-violet-500/5 backdrop-blur-sm">
+                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br from-violet-500/10 to-purple-600/10 blur-3xl md:h-40 md:w-40"></div>
+                <CardHeader className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-violet-50/50 p-4 md:p-6 md:pb-4">
+                  <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900 md:gap-2.5 md:text-lg">
+                    <div className="rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 p-1.5 shadow-lg shadow-violet-500/20 md:p-2">
+                      <User className="h-4 w-4 text-white md:h-5 md:w-5" />
+                    </div>
+                    Cliente
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="relative p-4 md:p-6">
+                  <ClientSearch value={client} onChange={setClient} />
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Products */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Productos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ProductSelector items={items} onChange={setItems} />
-              </CardContent>
-            </Card>
+            <div className="group relative" style={{ animation: 'slideIn 0.5s ease-out' }}>
+              <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
+              <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-emerald-500/5 backdrop-blur-sm">
+                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/10 to-green-600/10 blur-3xl md:h-40 md:w-40"></div>
+                <CardHeader className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-emerald-50/50 p-4 md:p-6 md:pb-4">
+                  <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900 md:gap-2.5 md:text-lg">
+                    <div className="rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 p-1.5 shadow-lg shadow-emerald-500/20 md:p-2">
+                      <Package className="h-4 w-4 text-white md:h-5 md:w-5" />
+                    </div>
+                    Productos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="relative p-4 md:p-6">
+                  <ProductSelector items={items} onChange={setItems} />
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Observations */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <MessageSquare className="h-5 w-5" />
-                  Observaciones
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Observaciones (visible para el cliente)</Label>
-                  <Textarea
-                    placeholder="Condiciones de venta, detalles de entrega, etc."
-                    value={observations}
-                    onChange={(e) => setObservations(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Notas internas (solo visible para vos)</Label>
-                  <Textarea
-                    placeholder="Notas privadas sobre esta venta..."
-                    value={internalNotes}
-                    onChange={(e) => setInternalNotes(e.target.value)}
-                    rows={2}
-                    className="bg-amber-50/50"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <div className="group relative" style={{ animation: 'slideIn 0.6s ease-out' }}>
+              <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
+              <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-amber-500/5 backdrop-blur-sm">
+                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br from-amber-500/10 to-orange-600/10 blur-3xl md:h-40 md:w-40"></div>
+                <CardHeader className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-amber-50/50 p-4 md:p-6 md:pb-4">
+                  <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900 md:gap-2.5 md:text-lg">
+                    <div className="rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 p-1.5 shadow-lg shadow-amber-500/20 md:p-2">
+                      <MessageSquare className="h-4 w-4 text-white md:h-5 md:w-5" />
+                    </div>
+                    Observaciones
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="relative space-y-4 p-4 md:space-y-5 md:p-6">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold text-slate-700 md:text-sm">Observaciones (visible para el cliente)</Label>
+                    <Textarea
+                      placeholder="Condiciones de venta, detalles de entrega, etc."
+                      value={observations}
+                      onChange={(e) => setObservations(e.target.value)}
+                      rows={3}
+                      className="resize-none border-slate-200 bg-white/50 text-sm transition-all focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold text-slate-700 md:text-sm">Notas internas (solo visible para vos)</Label>
+                    <Textarea
+                      placeholder="Notas privadas sobre esta venta..."
+                      value={internalNotes}
+                      onChange={(e) => setInternalNotes(e.target.value)}
+                      rows={2}
+                      className="resize-none border-amber-200 bg-amber-50/50 text-sm transition-all focus:border-amber-400 focus:bg-amber-50 focus:ring-2 focus:ring-amber-100"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {/* Payment (only for Recibo) */}
             {type === "RECIBO" && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <CreditCard className="h-5 w-5" />
-                    Forma de Pago
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {PAYMENT_METHODS.map((method) => (
-                    <button
-                      key={method.value}
-                      type="button"
-                      onClick={() => setPaymentMethod(method.value)}
-                      className={cn(
-                        "flex w-full items-center justify-between rounded-lg border p-3 transition-all",
-                        paymentMethod === method.value
-                          ? "border-blue-600 bg-blue-50"
-                          : "hover:bg-gray-50"
-                      )}
-                    >
-                      <span className="font-medium">{method.label}</span>
-                      {method.surcharge > 0 && (
-                        <Badge variant="secondary">+{method.surcharge}%</Badge>
-                      )}
-                    </button>
-                  ))}
-                </CardContent>
-              </Card>
+              <div className="group relative" style={{ animation: 'slideIn 0.7s ease-out' }}>
+                <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
+                <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-blue-500/5 backdrop-blur-sm">
+                  <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/10 to-indigo-600/10 blur-3xl md:h-40 md:w-40"></div>
+                  <CardHeader className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-blue-50/50 p-4 md:pb-4">
+                    <CardTitle className="flex items-center gap-2 text-sm font-bold text-slate-900 md:gap-2.5 md:text-base">
+                      <div className="rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 p-1 shadow-lg shadow-blue-500/20 md:p-1.5">
+                        <CreditCard className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
+                      </div>
+                      Forma de Pago
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="relative space-y-2 p-3 md:space-y-2.5 md:p-4">
+                    {PAYMENT_METHODS.map((method) => (
+                      <button
+                        key={method.value}
+                        type="button"
+                        onClick={() => setPaymentMethod(method.value)}
+                        className={cn(
+                          "flex w-full items-center justify-between rounded-lg border-2 p-2.5 text-sm transition-all duration-300 md:p-3",
+                          paymentMethod === method.value
+                            ? "border-blue-400 bg-gradient-to-r from-blue-50 to-indigo-50/50 shadow-md shadow-blue-500/10"
+                            : "border-slate-200 bg-white/50 hover:border-slate-300 hover:bg-slate-50/50"
+                        )}
+                      >
+                        <span className="font-semibold text-slate-900">{method.label}</span>
+                        {method.surcharge > 0 && (
+                          <Badge variant="secondary" className="text-xs font-bold shadow-sm">
+                            +{method.surcharge}%
+                          </Badge>
+                        )}
+                      </button>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
             )}
 
             {/* Validity (only for Presupuesto) */}
             {type === "PRESUPUESTO" && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Calendar className="h-5 w-5" />
-                    Validez
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Select
-                    value={String(validDays)}
-                    onValueChange={(v) => setValidDays(parseInt(v))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="3">3 días</SelectItem>
-                      <SelectItem value="7">7 días</SelectItem>
-                      <SelectItem value="15">15 días</SelectItem>
-                      <SelectItem value="30">30 días</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </CardContent>
-              </Card>
+              <div className="group relative" style={{ animation: 'slideIn 0.7s ease-out' }}>
+                <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
+                <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-violet-500/5 backdrop-blur-sm">
+                  <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br from-violet-500/10 to-purple-600/10 blur-3xl md:h-40 md:w-40"></div>
+                  <CardHeader className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-violet-50/50 p-4 md:pb-4">
+                    <CardTitle className="flex items-center gap-2 text-sm font-bold text-slate-900 md:gap-2.5 md:text-base">
+                      <div className="rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 p-1 shadow-lg shadow-violet-500/20 md:p-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
+                      </div>
+                      Validez
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="relative p-3 md:p-4">
+                    <Select
+                      value={String(validDays)}
+                      onValueChange={(v) => setValidDays(parseInt(v))}
+                    >
+                      <SelectTrigger className="border-slate-200 bg-white/50 text-sm font-semibold transition-all focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-100">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">3 días</SelectItem>
+                        <SelectItem value="7">7 días</SelectItem>
+                        <SelectItem value="15">15 días</SelectItem>
+                        <SelectItem value="30">30 días</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </CardContent>
+                </Card>
+              </div>
             )}
 
             {/* Shipping */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Truck className="h-5 w-5" />
-                  Envío
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Select value={shippingType} onValueChange={setShippingType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SHIPPING_OPTIONS.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {shippingType.includes("costo") && (
-                  <div className="space-y-2">
-                    <Label>Costo de envío</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        $
-                      </span>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={shippingCost || ""}
-                        onChange={(e) =>
-                          setShippingCost(parseFloat(e.target.value) || 0)
-                        }
-                        className="pl-7"
-                      />
+            <div className="group relative" style={{ animation: 'slideIn 0.8s ease-out' }}>
+              <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
+              <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-orange-500/5 backdrop-blur-sm">
+                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br from-orange-500/10 to-amber-600/10 blur-3xl md:h-40 md:w-40"></div>
+                <CardHeader className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-orange-50/50 p-4 md:pb-4">
+                  <CardTitle className="flex items-center gap-2 text-sm font-bold text-slate-900 md:gap-2.5 md:text-base">
+                    <div className="rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 p-1 shadow-lg shadow-orange-500/20 md:p-1.5">
+                      <Truck className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    Envío
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="relative space-y-3 p-3 md:space-y-4 md:p-4">
+                  <Select value={shippingType} onValueChange={setShippingType}>
+                    <SelectTrigger className="border-slate-200 bg-white/50 text-sm font-semibold transition-all focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SHIPPING_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {shippingType.includes("costo") && (
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold text-slate-700 md:text-sm">Costo de envío</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-600">
+                          $
+                        </span>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={shippingCost || ""}
+                          onChange={(e) =>
+                            setShippingCost(parseFloat(e.target.value) || 0)
+                          }
+                          className="border-slate-200 bg-white/50 pl-7 text-sm font-semibold transition-all focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Summary */}
-            <Card className={cn(
-              "border-2",
-              type === "REMITO" 
-                ? "border-orange-200 bg-orange-50/30" 
-                : "border-blue-200 bg-blue-50/30"
-            )}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Resumen</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {type !== "REMITO" && (
-                  <>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <span>{formatCurrency(subtotal)}</span>
+            <div className="group relative" style={{ animation: 'slideIn 0.9s ease-out' }}>
+              <div className={cn(
+                "absolute -inset-0.5 rounded-2xl opacity-30 blur transition duration-500 group-hover:opacity-40",
+                type === "REMITO" 
+                  ? "bg-gradient-to-r from-orange-500 to-amber-600" 
+                  : "bg-gradient-to-r from-emerald-500 to-green-600"
+              )}></div>
+              <Card className={cn(
+                "relative overflow-hidden border-0 shadow-2xl backdrop-blur-sm",
+                type === "REMITO" 
+                  ? "bg-gradient-to-br from-orange-50/95 to-amber-50/90 shadow-orange-500/20" 
+                  : "bg-gradient-to-br from-emerald-50/95 to-green-50/90 shadow-emerald-500/20"
+              )}>
+                <div className={cn(
+                  "absolute -right-12 -top-12 h-32 w-32 rounded-full blur-3xl md:h-40 md:w-40",
+                  type === "REMITO"
+                    ? "bg-gradient-to-br from-orange-500/20 to-amber-600/20"
+                    : "bg-gradient-to-br from-emerald-500/20 to-green-600/20"
+                )}></div>
+                <CardHeader className={cn(
+                  "relative border-b p-4 md:pb-4",
+                  type === "REMITO"
+                    ? "border-orange-200/50 bg-gradient-to-r from-orange-100/50 to-amber-100/50"
+                    : "border-emerald-200/50 bg-gradient-to-r from-emerald-100/50 to-green-100/50"
+                )}>
+                  <CardTitle className="flex items-center gap-2 text-sm font-bold text-slate-900 md:gap-2.5 md:text-base">
+                    <div className={cn(
+                      "rounded-lg p-1 shadow-lg md:p-1.5",
+                      type === "REMITO"
+                        ? "bg-gradient-to-br from-orange-500 to-amber-600 shadow-orange-500/30"
+                        : "bg-gradient-to-br from-emerald-500 to-green-600 shadow-emerald-500/30"
+                    )}>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
                     </div>
+                    Resumen
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="relative space-y-3 p-4 md:space-y-4 md:p-6">
+                  {type !== "REMITO" && (
+                    <>
+                      <div className="flex justify-between rounded-lg bg-white/60 px-2.5 py-2 text-xs backdrop-blur-sm md:px-3 md:text-sm">
+                        <span className="font-medium text-slate-600">Subtotal</span>
+                        <span className="font-bold text-slate-900">{formatCurrency(subtotal)}</span>
+                      </div>
 
-                    {surcharge > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          Recargo ({surchargeRate}%)
+                      {surcharge > 0 && (
+                        <div className="flex justify-between rounded-lg bg-white/60 px-2.5 py-2 text-xs backdrop-blur-sm md:px-3 md:text-sm">
+                          <span className="font-medium text-slate-600">
+                            Recargo ({surchargeRate}%)
+                          </span>
+                          <span className="font-bold text-orange-600">{formatCurrency(surcharge)}</span>
+                        </div>
+                      )}
+
+                      {shippingCost > 0 && (
+                        <div className="flex justify-between rounded-lg bg-white/60 px-2.5 py-2 text-xs backdrop-blur-sm md:px-3 md:text-sm">
+                          <span className="font-medium text-slate-600">Envío</span>
+                          <span className="font-bold text-slate-900">{formatCurrency(shippingCost)}</span>
+                        </div>
+                      )}
+
+                      <Separator className="bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
+
+                      <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 p-3 shadow-lg shadow-emerald-500/30 md:p-4">
+                        <span className="text-xs font-bold text-white md:text-sm">Total</span>
+                        <span className="text-2xl font-bold text-white drop-shadow-lg md:text-3xl">
+                          {formatCurrency(total)}
                         </span>
-                        <span>{formatCurrency(surcharge)}</span>
                       </div>
-                    )}
+                    </>
+                  )}
 
-                    {shippingCost > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Envío</span>
-                        <span>{formatCurrency(shippingCost)}</span>
+                  {type === "REMITO" && (
+                    <div className="rounded-xl border-2 border-orange-300/50 bg-gradient-to-br from-orange-100/80 to-amber-100/60 p-4 text-center shadow-inner md:p-6">
+                      <Truck className="mx-auto mb-2 h-8 w-8 text-orange-600 drop-shadow-sm md:mb-3 md:h-10 md:w-10" />
+                      <p className="mb-1 text-base font-bold text-orange-900 md:text-lg">
+                        Remito de entrega
+                      </p>
+                      <p className="text-xs font-medium text-orange-700 md:text-sm">
+                        Se enviará sin precios al repartidor
+                      </p>
+                    </div>
+                  )}
+
+                  {!isValid && (
+                    <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-100 to-orange-100 p-3 shadow-inner md:gap-2.5 md:p-4">
+                      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-amber-500 shadow-md md:h-8 md:w-8">
+                        <AlertCircle className="h-4 w-4 text-white md:h-5 md:w-5" />
                       </div>
-                    )}
-
-                    <Separator />
-
-                    <div className="flex justify-between">
-                      <span className="font-semibold">Total</span>
-                      <span className="text-2xl font-bold text-blue-600">
-                        {formatCurrency(total)}
+                      <span className="text-xs font-semibold text-amber-900 md:text-sm">
+                        Seleccioná cliente y agregá productos
                       </span>
                     </div>
-                  </>
-                )}
-
-                {type === "REMITO" && (
-                  <div className="rounded-lg bg-orange-100 p-4 text-center">
-                    <Truck className="mx-auto mb-2 h-8 w-8 text-orange-600" />
-                    <p className="font-semibold text-orange-900">
-                      Remito de entrega
-                    </p>
-                    <p className="text-sm text-orange-700">
-                      Se enviará sin precios al repartidor
-                    </p>
-                  </div>
-                )}
-
-                {!isValid && (
-                  <div className="flex items-center gap-2 rounded-lg bg-amber-100 p-3 text-sm text-amber-800">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>Seleccioná cliente y agregá productos</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
+
+      <style jsx global>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   )
 }
