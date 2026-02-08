@@ -41,6 +41,7 @@
     "pdfkit": "^0.17.2",
     "radix-ui": "^1.4.3",
     "react": "18.3.1",
+    "react-day-picker": "^9.13.1",
     "react-dom": "18.3.1",
     "react-hook-form": "^7.71.1",
     "recharts": "^3.7.0",

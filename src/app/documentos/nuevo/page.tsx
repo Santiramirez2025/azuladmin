@@ -1,3 +1,4 @@
+// app/(dashboard)/documentos/nuevo/page.tsx
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
@@ -50,6 +51,7 @@ import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
 import { cn, formatCurrency } from "@/lib/utils"
 import { ProductSelector, type DocumentItem } from "@/components/product-selector"
+import { usePaymentRates } from "@/hooks/use-payment-rates"
 
 // ============================================================================
 // Types
@@ -74,14 +76,6 @@ const DOCUMENT_TYPES: { value: DocumentType; label: string; description: string;
   { value: "PRESUPUESTO", label: "Presupuesto", description: "Cotización para el cliente", icon: FileText },
   { value: "RECIBO", label: "Recibo", description: "Comprobante de pago", icon: CreditCard },
   { value: "REMITO", label: "Remito", description: "Comprobante de entrega", icon: Truck },
-]
-
-const PAYMENT_METHODS: { value: PaymentMethod; label: string; surcharge: number }[] = [
-  { value: "CONTADO", label: "Contado / Transferencia", surcharge: 0 },
-  { value: "CUOTAS_3", label: "3 Cuotas", surcharge: 18 },
-  { value: "CUOTAS_6", label: "6 Cuotas", surcharge: 25 },
-  { value: "CUOTAS_9", label: "9 Cuotas", surcharge: 35 },
-  { value: "CUOTAS_12", label: "12 Cuotas", surcharge: 47 },
 ]
 
 const SHIPPING_OPTIONS = [
@@ -279,6 +273,9 @@ function NuevoDocumentoContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  // ✅ Hook para cargar tasas dinámicas desde DB
+  const { rates: paymentRates, isLoading: loadingRates } = usePaymentRates()
+
   const [type, setType] = useState<DocumentType>(
     (searchParams.get("tipo")?.toUpperCase() as DocumentType) || "PRESUPUESTO"
   )
@@ -293,11 +290,24 @@ function NuevoDocumentoContent() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [saveAction, setSaveAction] = useState<"draft" | "send">("draft")
 
+  // ✅ Generar PAYMENT_METHODS dinámicamente desde las tasas de configuración
+  const PAYMENT_METHODS = [
+    { value: "CONTADO" as const, label: "Contado / Transferencia", surcharge: paymentRates["1"] || 0 },
+    { value: "CUOTAS_3" as const, label: "3 Cuotas", surcharge: paymentRates["3"] || 18 },
+    { value: "CUOTAS_6" as const, label: "6 Cuotas", surcharge: paymentRates["6"] || 25 },
+    { value: "CUOTAS_9" as const, label: "9 Cuotas", surcharge: paymentRates["9"] || 35 },
+    { value: "CUOTAS_12" as const, label: "12 Cuotas", surcharge: paymentRates["12"] || 47 },
+  ]
+
   const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0)
   const surchargeRate = PAYMENT_METHODS.find((p) => p.value === paymentMethod)?.surcharge || 0
   const surcharge = type === "RECIBO" ? subtotal * (surchargeRate / 100) : 0
   const total = subtotal + surcharge + shippingCost
   const isValid = client && items.length > 0
+
+  // ✅ Calcular número de cuotas y monto por cuota
+  const installmentsNumber = paymentMethod === "CONTADO" ? 1 : parseInt(paymentMethod.split("_")[1]) || 1
+  const installmentAmount = installmentsNumber > 1 ? total / installmentsNumber : 0
 
   const handleSubmit = async (action: "draft" | "send") => {
     if (!client || items.length === 0) {
@@ -335,6 +345,7 @@ function NuevoDocumentoContent() {
           validUntil,
           surchargeRate: type === "RECIBO" ? surchargeRate : 0,
           paymentMethod: type === "RECIBO" ? paymentMethod : undefined,
+          installments: type === "RECIBO" ? installmentsNumber : undefined,
           shippingType,
           shippingCost,
         }),
@@ -383,11 +394,16 @@ function NuevoDocumentoContent() {
           window.open(deliveryWhatsappUrl, "_blank")
           toast.success("Remito enviado al repartidor")
         } else {
-          const message = `¡Hola ${client.name}! 👋\n\nTe envío tu *${
+          // ✅ Mensaje mejorado con info de cuotas si aplica
+          let message = `¡Hola ${client.name}! 👋\n\nTe envío tu *${
             type === "PRESUPUESTO" ? "Presupuesto" : "Recibo"
-          } #${String(document.number).padStart(5, "0")}*\n\n💰 Total: *${formatCurrency(
-            total
-          )}*\n\n¡Gracias por tu confianza!`
+          } #${String(document.number).padStart(5, "0")}*\n\n`
+
+          if (type === "RECIBO" && installmentsNumber > 1) {
+            message += `💳 *Plan de cuotas:* ${installmentsNumber} x ${formatCurrency(installmentAmount)}\n`
+          }
+          
+          message += `💰 *Total:* ${formatCurrency(total)}\n\n¡Gracias por tu confianza!`
 
           const clientPhone = client.phone.replace(/\D/g, "")
           const whatsappUrl = `https://wa.me/${clientPhone}?text=${encodeURIComponent(message)}`
@@ -475,7 +491,7 @@ function NuevoDocumentoContent() {
         <div className="space-y-4 pb-24 md:grid md:gap-6 md:space-y-0 md:pb-0 lg:grid-cols-3">
           {/* Main Content */}
           <div className="space-y-4 md:space-y-6 lg:col-span-2">
-            {/* Document Type - Mobile Optimized */}
+            {/* Document Type */}
             <div className="group relative" style={{ animation: 'slideIn 0.3s ease-out' }}>
               <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
               <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-blue-500/5 backdrop-blur-sm">
@@ -630,26 +646,35 @@ function NuevoDocumentoContent() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="relative space-y-2 p-3 md:space-y-2.5 md:p-4">
-                    {PAYMENT_METHODS.map((method) => (
-                      <button
-                        key={method.value}
-                        type="button"
-                        onClick={() => setPaymentMethod(method.value)}
-                        className={cn(
-                          "flex w-full items-center justify-between rounded-lg border-2 p-2.5 text-sm transition-all duration-300 md:p-3",
-                          paymentMethod === method.value
-                            ? "border-blue-400 bg-gradient-to-r from-blue-50 to-indigo-50/50 shadow-md shadow-blue-500/10"
-                            : "border-slate-200 bg-white/50 hover:border-slate-300 hover:bg-slate-50/50"
-                        )}
-                      >
-                        <span className="font-semibold text-slate-900">{method.label}</span>
-                        {method.surcharge > 0 && (
-                          <Badge variant="secondary" className="text-xs font-bold shadow-sm">
-                            +{method.surcharge}%
-                          </Badge>
-                        )}
-                      </button>
-                    ))}
+                    {loadingRates ? (
+                      <div className="flex items-center justify-center py-6">
+                        <div className="relative h-6 w-6">
+                          <div className="absolute inset-0 animate-spin rounded-full border-3 border-blue-200"></div>
+                          <div className="absolute inset-0 animate-spin rounded-full border-3 border-blue-600 border-t-transparent"></div>
+                        </div>
+                      </div>
+                    ) : (
+                      PAYMENT_METHODS.map((method) => (
+                        <button
+                          key={method.value}
+                          type="button"
+                          onClick={() => setPaymentMethod(method.value)}
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-lg border-2 p-2.5 text-sm transition-all duration-300 md:p-3",
+                            paymentMethod === method.value
+                              ? "border-blue-400 bg-gradient-to-r from-blue-50 to-indigo-50/50 shadow-md shadow-blue-500/10"
+                              : "border-slate-200 bg-white/50 hover:border-slate-300 hover:bg-slate-50/50"
+                          )}
+                        >
+                          <span className="font-semibold text-slate-900">{method.label}</span>
+                          {method.surcharge > 0 && (
+                            <Badge variant="secondary" className="text-xs font-bold shadow-sm">
+                              +{method.surcharge}%
+                            </Badge>
+                          )}
+                        </button>
+                      ))
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -809,6 +834,28 @@ function NuevoDocumentoContent() {
                           {formatCurrency(total)}
                         </span>
                       </div>
+
+                      {/* ✅ Mostrar plan de cuotas si aplica */}
+                      {type === "RECIBO" && paymentMethod !== "CONTADO" && installmentAmount > 0 && !loadingRates && (
+                        <div className="rounded-xl border-2 border-blue-300/50 bg-gradient-to-br from-blue-100/80 to-indigo-100/60 p-3 shadow-inner md:p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <CreditCard className="h-4 w-4 text-blue-600 md:h-5 md:w-5" />
+                              <span className="text-xs font-semibold text-blue-900 md:text-sm">
+                                Plan de cuotas
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-bold text-blue-900 md:text-xl">
+                                {installmentsNumber} x {formatCurrency(installmentAmount)}
+                              </p>
+                              <p className="text-[10px] font-medium text-blue-700 md:text-xs">
+                                Total: {formatCurrency(total)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
 

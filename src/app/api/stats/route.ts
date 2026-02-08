@@ -1,8 +1,19 @@
-import { NextResponse } from "next/server"
+// src/app/api/stats/route.ts
+import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/db"
-import { startOfMonth, endOfMonth, startOfDay, endOfDay, subMonths } from "date-fns"
+import { 
+  startOfMonth, 
+  endOfMonth, 
+  startOfDay, 
+  endOfDay, 
+  subMonths, 
+  startOfWeek, 
+  subWeeks, 
+  subDays,
+  endOfWeek,
+  isValid
+} from "date-fns"
 
-// Tipos para resultados de Prisma (antes de tener Prisma generado)
 interface DocumentWithClient {
   id: string
   number: number
@@ -29,53 +40,94 @@ interface DailySaleResult {
   _count: number
 }
 
-// GET /api/stats - Obtener estadísticas del dashboard
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const now = new Date()
-    const monthStart = startOfMonth(now)
-    const monthEnd = endOfMonth(now)
-    const todayStart = startOfDay(now)
-    const todayEnd = endOfDay(now)
-    const lastMonthStart = startOfMonth(subMonths(now, 1))
-    const lastMonthEnd = endOfMonth(subMonths(now, 1))
+    const searchParams = request.nextUrl.searchParams
+    const period = searchParams.get("period") || "month"
+    const customDateParam = searchParams.get("date")
 
-    // Ventas del mes actual
-    const salesThisMonth = await prisma.document.aggregate({
+    // ✅ Si hay fecha personalizada, usarla como referencia
+    let referenceDate = new Date()
+    if (customDateParam) {
+      const parsedDate = new Date(customDateParam)
+      if (isValid(parsedDate)) {
+        referenceDate = parsedDate
+      }
+    }
+
+    let periodStart: Date
+    let periodEnd: Date
+    let previousStart: Date
+    let previousEnd: Date
+    let daysToShow: number
+
+    // ✅ Configurar rangos según el período
+    switch (period) {
+      case "day":
+        periodStart = startOfDay(referenceDate)
+        periodEnd = endOfDay(referenceDate)
+        previousStart = startOfDay(subDays(referenceDate, 1))
+        previousEnd = endOfDay(subDays(referenceDate, 1))
+        daysToShow = 1
+        break
+      
+      case "week":
+        periodStart = startOfWeek(referenceDate, { weekStartsOn: 1 }) // Lunes
+        periodEnd = endOfWeek(referenceDate, { weekStartsOn: 1 }) // Domingo
+        previousStart = startOfWeek(subWeeks(referenceDate, 1), { weekStartsOn: 1 })
+        previousEnd = endOfWeek(subWeeks(referenceDate, 1), { weekStartsOn: 1 })
+        daysToShow = 7
+        break
+      
+      case "month":
+      default:
+        periodStart = startOfMonth(referenceDate)
+        periodEnd = endOfMonth(referenceDate)
+        previousStart = startOfMonth(subMonths(referenceDate, 1))
+        previousEnd = endOfMonth(subMonths(referenceDate, 1))
+        daysToShow = 30
+        break
+    }
+
+    // ✅ 1. Ventas del período actual
+    const salesThisPeriod = await prisma.document.aggregate({
       where: {
         type: { in: ["RECIBO"] },
         status: { in: ["APPROVED", "COMPLETED"] },
-        date: { gte: monthStart, lte: monthEnd },
+        date: { gte: periodStart, lte: periodEnd },
       },
       _sum: { total: true },
       _count: true,
     })
 
-    // Ventas del mes anterior (para comparación)
-    const salesLastMonth = await prisma.document.aggregate({
+    // ✅ 2. Ventas del período anterior (para comparación)
+    const salesLastPeriod = await prisma.document.aggregate({
       where: {
         type: { in: ["RECIBO"] },
         status: { in: ["APPROVED", "COMPLETED"] },
-        date: { gte: lastMonthStart, lte: lastMonthEnd },
+        date: { gte: previousStart, lte: previousEnd },
       },
       _sum: { total: true },
     })
 
-    // Documentos del mes
-    const documentsThisMonth = await prisma.document.count({
+    // ✅ 3. Documentos del período
+    const documentsThisPeriod = await prisma.document.count({
       where: {
-        date: { gte: monthStart, lte: monthEnd },
+        date: { gte: periodStart, lte: periodEnd },
       },
     })
 
-    // Documentos creados hoy
+    // ✅ 4. Documentos creados "hoy" (en la fecha de referencia)
     const documentsToday = await prisma.document.count({
       where: {
-        createdAt: { gte: todayStart, lte: todayEnd },
+        createdAt: { 
+          gte: startOfDay(referenceDate), 
+          lte: endOfDay(referenceDate) 
+        },
       },
     })
 
-    // Pendientes de cobro
+    // ✅ 5. Pendientes de cobro (siempre total, no cambia por período)
     const pendingPayments = await prisma.document.aggregate({
       where: {
         type: "RECIBO",
@@ -86,14 +138,14 @@ export async function GET() {
       _count: true,
     })
 
-    // Top productos del mes
+    // ✅ 6. Top productos del período
     const topProducts = await prisma.documentItem.groupBy({
       by: ["productName", "productSize"],
       where: {
         document: {
           type: { in: ["RECIBO"] },
           status: { in: ["APPROVED", "COMPLETED"] },
-          date: { gte: monthStart, lte: monthEnd },
+          date: { gte: periodStart, lte: periodEnd },
         },
       },
       _sum: {
@@ -108,10 +160,13 @@ export async function GET() {
       take: 5,
     })
 
-    // Documentos recientes
+    // ✅ 7. Documentos recientes del período
     const recentDocuments = await prisma.document.findMany({
+      where: {
+        date: { gte: periodStart, lte: periodEnd },
+      },
       orderBy: { createdAt: "desc" },
-      take: 5,
+      take: 10,
       include: {
         client: {
           select: { name: true },
@@ -119,42 +174,76 @@ export async function GET() {
       },
     })
 
-    // Ventas por día (últimos 30 días)
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    // ✅ 8. Ventas diarias del período
+    const startDate = period === "day" 
+      ? startOfDay(referenceDate) 
+      : subDays(periodEnd, daysToShow - 1)
+    
     const dailySales = await prisma.document.groupBy({
       by: ["date"],
       where: {
         type: { in: ["RECIBO"] },
         status: { in: ["APPROVED", "COMPLETED"] },
-        date: { gte: thirtyDaysAgo },
+        date: { gte: startDate, lte: periodEnd },
       },
       _sum: { total: true },
       _count: true,
       orderBy: { date: "asc" },
     })
 
-    // Calcular cambio porcentual
-    const currentSales = Number(salesThisMonth._sum.total || 0)
-    const previousSales = Number(salesLastMonth._sum.total || 0)
+    // ✅ 9. Rellenar días sin ventas con 0
+    const dailySalesComplete = []
+    
+    if (period === "day") {
+      // Para vista diaria: mostrar por horas (0-23)
+      for (let hour = 0; hour < 24; hour++) {
+        dailySalesComplete.push({
+          date: hour.toString(),
+          total: 0,
+          count: 0,
+        })
+      }
+    } else {
+      // Para semana/mes: mostrar por días
+      for (let i = 0; i < daysToShow; i++) {
+        const date = subDays(periodEnd, daysToShow - 1 - i)
+        const dateStr = date.toISOString().split("T")[0]
+        
+        const existing = dailySales.find(
+          (d) => d.date.toISOString().split("T")[0] === dateStr
+        )
+
+        dailySalesComplete.push({
+          date: dateStr,
+          total: existing ? Number(existing._sum.total || 0) : 0,
+          count: existing ? existing._count : 0,
+        })
+      }
+    }
+
+    // ✅ 10. Calcular cambio porcentual
+    const currentSales = Number(salesThisPeriod._sum.total || 0)
+    const previousSales = Number(salesLastPeriod._sum.total || 0)
     const salesChange =
       previousSales > 0
         ? Math.round(((currentSales - previousSales) / previousSales) * 100)
         : 0
 
+    // ✅ 11. Respuesta final
     return NextResponse.json({
       salesThisMonth: {
         total: currentSales,
-        count: salesThisMonth._count,
+        count: salesThisPeriod._count,
         change: salesChange,
       },
-      documentsThisMonth,
+      documentsThisMonth: documentsThisPeriod,
       documentsToday,
       pendingPayments: {
         total: Number(pendingPayments._sum.balance || 0),
         count: pendingPayments._count,
       },
       topProducts: (topProducts as TopProductResult[]).map((p) => ({
-        name: `${p.productName} ${p.productSize}`,
+        name: `${p.productName} ${p.productSize}`.trim(),
         quantity: p._sum.quantity || 0,
         revenue: Number(p._sum.subtotal || 0),
       })),
@@ -165,13 +254,9 @@ export async function GET() {
         client: d.client.name,
         total: Number(d.total),
         status: d.status,
-        date: d.date,
+        date: d.date.toISOString(),
       })),
-      dailySales: (dailySales as DailySaleResult[]).map((d) => ({
-        date: d.date,
-        total: Number(d._sum.total || 0),
-        count: d._count,
-      })),
+      dailySales: dailySalesComplete,
     })
   } catch (error) {
     console.error("Error fetching stats:", error)

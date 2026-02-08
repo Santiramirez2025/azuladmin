@@ -1,3 +1,4 @@
+// app/(dashboard)/configuracion/page.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -24,6 +25,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
+import { usePaymentRates } from "@/hooks/use-payment-rates"
 
 interface CompanyInfo {
   name: string
@@ -34,10 +37,6 @@ interface CompanyInfo {
   whatsapp: string
   email: string
   cuit?: string
-}
-
-interface PaymentRates {
-  [key: string]: number
 }
 
 export default function ConfiguracionPage() {
@@ -52,31 +51,19 @@ export default function ConfiguracionPage() {
     cuit: "",
   })
 
-  const [paymentRates, setPaymentRates] = useState<PaymentRates>({
-    "1": 0,
-    "3": 18,
-    "6": 25,
-    "9": 35,
-    "12": 47,
-  })
+  const { rates: paymentRates, isLoading: loadingRates, saveRates } = usePaymentRates()
+  const [localRates, setLocalRates] = useState(paymentRates)
 
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [seedStatus, setSeedStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
 
   useEffect(() => {
-    // Cargar configuración guardada
     const loadConfig = async () => {
       try {
-        // En producción, esto vendría de la API
         const savedCompany = localStorage.getItem("azul_company_info")
-        const savedRates = localStorage.getItem("azul_payment_rates")
-        
         if (savedCompany) {
           setCompanyInfo(JSON.parse(savedCompany))
-        }
-        if (savedRates) {
-          setPaymentRates(JSON.parse(savedRates))
         }
       } catch (error) {
         console.error("Error loading config:", error)
@@ -85,17 +72,29 @@ export default function ConfiguracionPage() {
     loadConfig()
   }, [])
 
+  useEffect(() => {
+    setLocalRates(paymentRates)
+  }, [paymentRates])
+
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      // Guardar en localStorage (en producción, esto iría a la API)
+      // Guardar company info en localStorage
       localStorage.setItem("azul_company_info", JSON.stringify(companyInfo))
-      localStorage.setItem("azul_payment_rates", JSON.stringify(paymentRates))
       
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      // Guardar payment rates en la base de datos
+      const success = await saveRates(localRates)
+      
+      if (success) {
+        toast.success("Configuración guardada correctamente")
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      } else {
+        toast.error("Error al guardar las tasas de pago")
+      }
     } catch (error) {
       console.error("Error saving config:", error)
+      toast.error("Error al guardar la configuración")
     } finally {
       setIsSaving(false)
     }
@@ -107,13 +106,16 @@ export default function ConfiguracionPage() {
       const res = await fetch("/api/seed", { method: "POST" })
       if (res.ok) {
         setSeedStatus("success")
+        toast.success("Datos de ejemplo cargados correctamente")
         setTimeout(() => setSeedStatus("idle"), 3000)
       } else {
         setSeedStatus("error")
+        toast.error("Error al cargar datos de ejemplo")
       }
     } catch (error) {
       console.error("Error seeding database:", error)
       setSeedStatus("error")
+      toast.error("Error al cargar datos de ejemplo")
     }
   }
 
@@ -143,7 +145,7 @@ export default function ConfiguracionPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Datos de la Empresa - Enhanced */}
+          {/* Datos de la Empresa */}
           <div className="group relative" style={{ animation: 'slideIn 0.4s ease-out' }}>
             <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
             <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-blue-500/5 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10">
@@ -268,7 +270,7 @@ export default function ConfiguracionPage() {
             </Card>
           </div>
 
-          {/* Tasas de Financiación - Enhanced */}
+          {/* Tasas de Financiación */}
           <div className="group relative" style={{ animation: 'slideIn 0.5s ease-out' }}>
             <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
             <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-emerald-500/5 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-500/10">
@@ -289,74 +291,85 @@ export default function ConfiguracionPage() {
                 </div>
               </CardHeader>
               <CardContent className="relative space-y-5 p-6">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {[
-                    { key: "1", label: "Contado (1 pago)" },
-                    { key: "3", label: "3 Cuotas" },
-                    { key: "6", label: "6 Cuotas" },
-                    { key: "9", label: "9 Cuotas" },
-                    { key: "12", label: "12 Cuotas" },
-                  ].map(({ key, label }) => (
-                    <div key={key} className="space-y-2">
-                      <Label className="text-sm font-semibold text-slate-700">{label}</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          value={paymentRates[key]}
-                          onChange={(e) =>
-                            setPaymentRates({
-                              ...paymentRates,
-                              [key]: Number(e.target.value),
-                            })
-                          }
-                          className="border-slate-200 bg-white/50 transition-all focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"
-                        />
-                        <span className="text-sm font-semibold text-slate-500">%</span>
+                {loadingRates ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="relative h-8 w-8">
+                      <div className="absolute inset-0 animate-spin rounded-full border-4 border-emerald-200"></div>
+                      <div className="absolute inset-0 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent"></div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {[
+                        { key: "1", label: "Contado (1 pago)" },
+                        { key: "3", label: "3 Cuotas" },
+                        { key: "6", label: "6 Cuotas" },
+                        { key: "9", label: "9 Cuotas" },
+                        { key: "12", label: "12 Cuotas" },
+                      ].map(({ key, label }) => (
+                        <div key={key} className="space-y-2">
+                          <Label className="text-sm font-semibold text-slate-700">{label}</Label>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              value={localRates[key] || 0}
+                              onChange={(e) =>
+                                setLocalRates({
+                                  ...localRates,
+                                  [key]: Number(e.target.value),
+                                })
+                              }
+                              className="border-slate-200 bg-white/50 transition-all focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                            />
+                            <span className="text-sm font-semibold text-slate-500">%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Enhanced Preview */}
+                    <div className="mt-6 overflow-hidden rounded-xl border border-slate-200/50 bg-gradient-to-br from-slate-50/50 to-emerald-50/30 p-5 shadow-inner">
+                      <div className="mb-3 flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-emerald-600" />
+                        <p className="text-sm font-bold text-slate-700">
+                          Vista previa (producto de $100.000)
+                        </p>
+                      </div>
+                      <div className="space-y-2.5">
+                        {Object.entries(localRates).map(([cuotas, rate]) => {
+                          const total = 100000 * (1 + rate / 100)
+                          const cuota = total / Number(cuotas)
+                          return (
+                            <div
+                              key={cuotas}
+                              className="flex items-center justify-between rounded-lg bg-white/60 px-4 py-2.5 backdrop-blur-sm transition-all hover:bg-white/80"
+                            >
+                              <span className="text-sm font-medium text-slate-700">
+                                {cuotas === "1" ? "Contado" : `${cuotas} cuotas`}
+                                {rate > 0 && (
+                                  <span className="ml-1.5 inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">
+                                    +{rate}%
+                                  </span>
+                                )}
+                              </span>
+                              <span className="text-sm font-bold text-slate-900">
+                                {cuotas === "1"
+                                  ? `$${total.toLocaleString("es-AR")}`
+                                  : `${cuotas} x $${Math.round(cuota).toLocaleString("es-AR")}`}
+                              </span>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                {/* Enhanced Preview */}
-                <div className="mt-6 overflow-hidden rounded-xl border border-slate-200/50 bg-gradient-to-br from-slate-50/50 to-emerald-50/30 p-5 shadow-inner">
-                  <div className="mb-3 flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-emerald-600" />
-                    <p className="text-sm font-bold text-slate-700">
-                      Vista previa (producto de $100.000)
-                    </p>
-                  </div>
-                  <div className="space-y-2.5">
-                    {Object.entries(paymentRates).map(([cuotas, rate]) => {
-                      const total = 100000 * (1 + rate / 100)
-                      const cuota = total / Number(cuotas)
-                      return (
-                        <div
-                          key={cuotas}
-                          className="flex items-center justify-between rounded-lg bg-white/60 px-4 py-2.5 backdrop-blur-sm transition-all hover:bg-white/80"
-                        >
-                          <span className="text-sm font-medium text-slate-700">
-                            {cuotas === "1" ? "Contado" : `${cuotas} cuotas`}
-                            {rate > 0 && (
-                              <span className="ml-1.5 inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">
-                                +{rate}%
-                              </span>
-                            )}
-                          </span>
-                          <span className="text-sm font-bold text-slate-900">
-                            {cuotas === "1"
-                              ? `$${total.toLocaleString("es-AR")}`
-                              : `${cuotas} x $${Math.round(cuota).toLocaleString("es-AR")}`}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Base de Datos - Enhanced */}
+          {/* Base de Datos */}
           <div className="group relative" style={{ animation: 'slideIn 0.6s ease-out' }}>
             <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
             <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-violet-500/5 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl hover:shadow-violet-500/10">
@@ -445,7 +458,7 @@ export default function ConfiguracionPage() {
             </Card>
           </div>
 
-          {/* Información del Sistema - Enhanced */}
+          {/* Información del Sistema */}
           <div className="group relative" style={{ animation: 'slideIn 0.7s ease-out' }}>
             <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
             <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-blue-500/5 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10">
@@ -512,7 +525,7 @@ export default function ConfiguracionPage() {
             <Button
               size="lg"
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || loadingRates}
               className={`relative overflow-hidden px-8 py-6 text-base font-bold shadow-2xl transition-all ${
                 saved
                   ? "bg-gradient-to-r from-emerald-500 to-green-600 shadow-emerald-500/40"
