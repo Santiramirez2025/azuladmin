@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import prisma from "@/lib/db"
+import prisma from "@/lib/prisma"
 import { clientSchema } from "@/lib/validations"
 
 // GET /api/clients - Listar clientes

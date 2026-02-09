@@ -1,6 +1,6 @@
 // src/app/api/stats/route.ts
 import { NextRequest, NextResponse } from "next/server"
-import prisma from "@/lib/db"
+import prisma from "@/lib/prisma"
 import { 
   startOfMonth, 
   endOfMonth, 
@@ -13,13 +13,14 @@ import {
   endOfWeek,
   isValid
 } from "date-fns"
+import { Decimal } from "@prisma/client/runtime/library"
 
 interface DocumentWithClient {
   id: string
   number: number
   type: string
   status: string
-  total: number | bigint
+  total: Decimal  // ← Cambio aquí
   date: Date
   createdAt: Date
   client: { name: string }
@@ -30,13 +31,13 @@ interface TopProductResult {
   productSize: string
   _sum: {
     quantity: number | null
-    subtotal: number | bigint | null
+    subtotal: Decimal | null  // ← Cambio aquí
   }
 }
 
 interface DailySaleResult {
   date: Date
-  _sum: { total: number | bigint | null }
+  _sum: { total: Decimal | null }  // ← Cambio aquí
   _count: number
 }
 
@@ -247,12 +248,12 @@ export async function GET(request: NextRequest) {
         quantity: p._sum.quantity || 0,
         revenue: Number(p._sum.subtotal || 0),
       })),
-      recentDocuments: (recentDocuments as DocumentWithClient[]).map((d) => ({
+      recentDocuments: recentDocuments.map((d) => ({  // ← Removí el cast
         id: d.id,
         number: d.number,
         type: d.type,
         client: d.client.name,
-        total: Number(d.total),
+        total: Number(d.total),  // ← Conversión a number
         status: d.status,
         date: d.date.toISOString(),
       })),

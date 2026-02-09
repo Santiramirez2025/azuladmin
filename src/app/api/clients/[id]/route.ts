@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import prisma from "@/lib/db"
+import prisma from "@/lib/prisma"
 import { clientSchema } from "@/lib/validations"
 
 interface Params {
@@ -51,11 +51,15 @@ export async function GET(request: NextRequest, { params }: Params) {
       },
     })
 
+    // Convertir Decimal a number
+    const total = Number(stats._sum.total || 0)
+    const paid = Number(stats._sum.amountPaid || 0)
+
     return NextResponse.json({
       ...client,
-      totalPurchased: stats._sum.total || 0,
-      totalPaid: stats._sum.amountPaid || 0,
-      balance: (stats._sum.total || 0) - (stats._sum.amountPaid || 0),
+      totalPurchased: total,
+      totalPaid: paid,
+      balance: total - paid,
     })
   } catch (error) {
     console.error("Error fetching client:", error)
