@@ -119,7 +119,7 @@ function FormSkeleton() {
 }
 
 // ============================================================================
-// Client Search
+// Client Search - OPTIMIZADO
 // ============================================================================
 
 interface ClientSearchProps {
@@ -132,6 +132,12 @@ function ClientSearch({ value, onChange }: ClientSearchProps) {
   const [search, setSearch] = useState("")
   const [clients, setClients] = useState<Client[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
+  
+  // Quick add client state
+  const [quickName, setQuickName] = useState("")
+  const [quickPhone, setQuickPhone] = useState("")
+  const [isCreating, setIsCreating] = useState(false)
 
   useEffect(() => {
     if (search.length < 2) {
@@ -156,6 +162,41 @@ function ClientSearch({ value, onChange }: ClientSearchProps) {
 
     return () => clearTimeout(timer)
   }, [search])
+
+  const handleQuickCreate = async () => {
+    if (!quickName || !quickPhone) {
+      toast.error("Nombre y teléfono son obligatorios")
+      return
+    }
+
+    setIsCreating(true)
+    try {
+      const res = await fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: quickName,
+          phone: quickPhone,
+          city: "Villa María",
+          province: "Córdoba",
+        }),
+      })
+
+      if (!res.ok) throw new Error("Error al crear cliente")
+
+      const newClient = await res.json()
+      onChange(newClient)
+      setOpen(false)
+      setShowQuickAdd(false)
+      setQuickName("")
+      setQuickPhone("")
+      toast.success("Cliente creado correctamente")
+    } catch (error) {
+      toast.error("Error al crear cliente")
+    } finally {
+      setIsCreating(false)
+    }
+  }
 
   if (value) {
     return (
@@ -199,66 +240,175 @@ function ClientSearch({ value, onChange }: ClientSearchProps) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[calc(100vw-2rem)] border-slate-200/50 bg-white/95 p-0 shadow-2xl shadow-slate-900/10 backdrop-blur-xl sm:w-[400px]" align="start">
-        <Command shouldFilter={false}>
-          <CommandInput
-            placeholder="Nombre o teléfono..."
-            value={search}
-            onValueChange={setSearch}
-            className="border-0"
-          />
-          <CommandList>
-            {isLoading && (
-              <div className="flex items-center justify-center py-8">
-                <div className="relative h-8 w-8">
-                  <div className="absolute inset-0 animate-spin rounded-full border-4 border-blue-200"></div>
-                  <div className="absolute inset-0 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+        {!showQuickAdd ? (
+          <Command shouldFilter={false}>
+            <CommandInput
+              placeholder="Nombre o teléfono..."
+              value={search}
+              onValueChange={setSearch}
+              className="border-0"
+            />
+            <CommandList>
+              {isLoading && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="relative h-8 w-8">
+                    <div className="absolute inset-0 animate-spin rounded-full border-4 border-blue-200"></div>
+                    <div className="absolute inset-0 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+                  </div>
                 </div>
-              </div>
-            )}
-            {!isLoading && search.length >= 2 && clients.length === 0 && (
-              <CommandEmpty>
-                <div className="py-8 text-center">
-                  <User className="mx-auto mb-3 h-12 w-12 text-slate-300" />
-                  <p className="mb-1 text-sm font-semibold text-slate-700 md:text-base">No se encontraron clientes</p>
-                  <p className="mb-4 text-xs text-slate-500 md:text-sm">Crea un nuevo cliente para continuar</p>
-                  <Link href="/clientes/nuevo">
-                    <Button size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 text-sm font-semibold shadow-lg shadow-blue-500/25">
+              )}
+              {!isLoading && search.length >= 2 && clients.length === 0 && (
+                <CommandEmpty>
+                  <div className="py-8 text-center">
+                    <User className="mx-auto mb-3 h-12 w-12 text-slate-300" />
+                    <p className="mb-1 text-sm font-semibold text-slate-700 md:text-base">No se encontraron clientes</p>
+                    <p className="mb-4 text-xs text-slate-500 md:text-sm">Creá uno rápidamente o buscá otro</p>
+                    <div className="flex gap-2 px-4">
+                      <Button 
+                        size="sm" 
+                        onClick={() => setShowQuickAdd(true)}
+                        className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-sm font-semibold shadow-lg shadow-blue-500/25"
+                      >
+                        <User className="mr-1.5 h-4 w-4" />
+                        Crear Rápido
+                      </Button>
+                      <Link href="/clientes/nuevo" className="flex-1">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="w-full text-sm font-semibold"
+                          onClick={() => setOpen(false)}
+                        >
+                          Crear Completo
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </CommandEmpty>
+              )}
+              {!isLoading && clients.length > 0 && (
+                <>
+                  <div className="border-b border-slate-100 p-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowQuickAdd(true)}
+                      className="w-full justify-start gap-2 text-xs font-semibold text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                    >
+                      <User className="h-4 w-4" />
                       + Crear nuevo cliente
                     </Button>
-                  </Link>
-                </div>
-              </CommandEmpty>
-            )}
-            {!isLoading && clients.length > 0 && (
-              <CommandGroup>
-                {clients.map((client) => (
-                  <CommandItem
-                    key={client.id}
-                    value={client.id}
-                    onSelect={() => {
-                      onChange(client)
-                      setOpen(false)
-                      setSearch("")
-                    }}
-                    className="cursor-pointer rounded-lg px-3 py-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100">
-                        <User className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-900">{client.name}</p>
-                        <p className="truncate text-xs text-slate-500">
-                          {client.phone} · {client.city}
-                        </p>
-                      </div>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
+                  </div>
+                  <CommandGroup>
+                    {clients.map((client) => (
+                      <CommandItem
+                        key={client.id}
+                        value={client.id}
+                        onSelect={() => {
+                          onChange(client)
+                          setOpen(false)
+                          setSearch("")
+                        }}
+                        className="cursor-pointer rounded-lg px-3 py-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100">
+                            <User className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-900">{client.name}</p>
+                            <p className="truncate text-xs text-slate-500">
+                              {client.phone} · {client.city}
+                            </p>
+                          </div>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </>
+              )}
+            </CommandList>
+          </Command>
+        ) : (
+          <div className="p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900">Crear Cliente Rápido</h3>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setShowQuickAdd(false)
+                  setQuickName("")
+                  setQuickPhone("")
+                }}
+                className="h-auto p-1 text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </Button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Nombre *</Label>
+                <Input
+                  placeholder="Ej: Juan Pérez"
+                  value={quickName}
+                  onChange={(e) => setQuickName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && quickName && quickPhone) {
+                      handleQuickCreate()
+                    }
+                  }}
+                  className="mt-1 border-slate-200 text-sm"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Teléfono *</Label>
+                <Input
+                  placeholder="Ej: 3535123456"
+                  value={quickPhone}
+                  onChange={(e) => setQuickPhone(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && quickName && quickPhone) {
+                      handleQuickCreate()
+                    }
+                  }}
+                  className="mt-1 border-slate-200 text-sm"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setShowQuickAdd(false)
+                    setQuickName("")
+                    setQuickPhone("")
+                  }}
+                  className="flex-1 text-sm"
+                  disabled={isCreating}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleQuickCreate}
+                  disabled={isCreating || !quickName || !quickPhone}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-sm font-semibold shadow-lg shadow-blue-500/25"
+                >
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                      Creando...
+                    </>
+                  ) : (
+                    <>Crear</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   )
@@ -304,6 +454,29 @@ function NuevoDocumentoContent() {
 
   const installmentsNumber = paymentMethod === "CONTADO" ? 1 : parseInt(paymentMethod.split("_")[1]) || 1
   const installmentAmount = installmentsNumber > 1 ? total / installmentsNumber : 0
+
+  // ✅ Atajos de teclado
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + S = Guardar borrador
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        if (isValid && !isSubmitting) {
+          handleSubmit("draft")
+        }
+      }
+      // Ctrl/Cmd + Enter = Guardar y enviar
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault()
+        if (isValid && !isSubmitting) {
+          handleSubmit("send")
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isValid, isSubmitting])
 
   const handleSubmit = async (action: "draft" | "send") => {
     if (!client || items.length === 0) {
@@ -495,6 +668,7 @@ function NuevoDocumentoContent() {
               variant="outline"
               onClick={() => handleSubmit("draft")}
               disabled={!isValid || isSubmitting}
+              title="Ctrl/Cmd + S"
               className="flex-1 border-slate-200 bg-white font-semibold shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 md:flex-none md:px-6"
             >
               {isSubmitting && saveAction === "draft" && (
@@ -507,6 +681,7 @@ function NuevoDocumentoContent() {
             <Button
               onClick={() => handleSubmit("send")}
               disabled={!isValid || isSubmitting}
+              title="Ctrl/Cmd + Enter"
               className={cn(
                 "relative flex-1 overflow-hidden font-bold shadow-2xl transition-all disabled:opacity-50 md:flex-none md:px-6",
                 type === "REMITO" 
