@@ -1,4 +1,3 @@
-// app/(dashboard)/documentos/nuevo/page.tsx
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
@@ -273,7 +272,6 @@ function NuevoDocumentoContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // ✅ Hook para cargar tasas dinámicas desde DB
   const { rates: paymentRates, isLoading: loadingRates } = usePaymentRates()
 
   const [type, setType] = useState<DocumentType>(
@@ -290,7 +288,6 @@ function NuevoDocumentoContent() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [saveAction, setSaveAction] = useState<"draft" | "send">("draft")
 
-  // ✅ Generar PAYMENT_METHODS dinámicamente desde las tasas de configuración
   const PAYMENT_METHODS = [
     { value: "CONTADO" as const, label: "Contado / Transferencia", surcharge: paymentRates["1"] || 0 },
     { value: "CUOTAS_3" as const, label: "3 Cuotas", surcharge: paymentRates["3"] || 18 },
@@ -305,7 +302,6 @@ function NuevoDocumentoContent() {
   const total = subtotal + surcharge + shippingCost
   const isValid = client && items.length > 0
 
-  // ✅ Calcular número de cuotas y monto por cuota
   const installmentsNumber = paymentMethod === "CONTADO" ? 1 : parseInt(paymentMethod.split("_")[1]) || 1
   const installmentAmount = installmentsNumber > 1 ? total / installmentsNumber : 0
 
@@ -370,46 +366,89 @@ function NuevoDocumentoContent() {
         }
 
         if (type === "REMITO") {
+          // Mensaje para repartidor
           const productList = items
-            .map((item, index) => {
-              return `${index + 1}. ${item.productName}${
-                item.productSize ? ` - ${item.productSize}` : ""
-              } x${item.quantity}`
-            })
+            .map((item, index) => 
+              `${index + 1}. ${item.productName} ${item.productSize ? `- ${item.productSize}` : ""} x${item.quantity}`
+            )
             .join("\n")
 
-          const deliveryMessage = `🚚 *REMITO #${String(document.number).padStart(5, "0")}*\n\n` +
-            `📦 *Cliente:* ${client.name}\n` +
-            `📍 *Dirección:* ${client.address || "No especificada"}\n` +
-            `🏙️ *Ciudad:* ${client.city}\n` +
-            `📞 *Teléfono:* ${client.phone}\n\n` +
-            `*Productos a entregar:*\n${productList}\n\n` +
-            `${shippingType ? `📍 *Tipo de envío:* ${shippingType}\n` : ""}` +
-            `${observations ? `\n📝 *Observaciones:* ${observations}` : ""}`
+          const deliveryMessage = 
+            `🚚 *REMITO #${String(document.number).padStart(5, "0")}*\n\n` +
+            `*Cliente:* ${client.name}\n` +
+            `*Teléfono:* ${client.phone}\n` +
+            `*Dirección:* ${client.address || "A coordinar"}\n` +
+            `*Ciudad:* ${client.city}\n\n` +
+            `*PRODUCTOS A ENTREGAR:*\n${productList}\n\n` +
+            `${shippingType ? `*Envío:* ${shippingType}\n` : ""}` +
+            `${observations ? `\n*Obs:* ${observations}` : ""}`
 
-          const deliveryWhatsappUrl = `https://wa.me/${DELIVERY_WHATSAPP}?text=${encodeURIComponent(
-            deliveryMessage
-          )}`
-          
+          const deliveryWhatsappUrl = `https://wa.me/${DELIVERY_WHATSAPP}?text=${encodeURIComponent(deliveryMessage)}`
           window.open(deliveryWhatsappUrl, "_blank")
           toast.success("Remito enviado al repartidor")
         } else {
-          // ✅ Mensaje mejorado con info de cuotas si aplica
-          let message = `¡Hola ${client.name}! 👋\n\nTe envío tu *${
-            type === "PRESUPUESTO" ? "Presupuesto" : "Recibo"
-          } #${String(document.number).padStart(5, "0")}*\n\n`
+          // ✅ MENSAJE PROFESIONAL ÚNICO para cliente
+          const productList = items
+            .map((item) => {
+              const stockBadge = item.source === "STOCK" ? " ✓" : ""
+              return `• ${item.productName} ${item.productSize}${stockBadge}\n  ${item.quantity} x ${formatCurrency(item.unitPrice)} = ${formatCurrency(item.subtotal)}`
+            })
+            .join("\n\n")
 
-          if (type === "RECIBO" && installmentsNumber > 1) {
-            message += `💳 *Plan de cuotas:* ${installmentsNumber} x ${formatCurrency(installmentAmount)}\n`
+          const docType = type === "PRESUPUESTO" ? "PRESUPUESTO" : "RECIBO"
+          
+          let message = `Hola *${client.name}*\n\n`
+          message += `Te envío tu *${docType} #${String(document.number).padStart(5, "0")}*\n`
+          message += `━━━━━━━━━━━━━━━━━━━━━\n\n`
+          message += `${productList}\n\n`
+          message += `━━━━━━━━━━━━━━━━━━━━━\n`
+          
+          // Detalle de precios
+          if (surcharge > 0) {
+            message += `Subtotal: ${formatCurrency(subtotal)}\n`
+            message += `Recargo ${installmentsNumber} cuotas: ${formatCurrency(surcharge)}\n`
+            message += `━━━━━━━━━━━━━━━━━━━━━\n`
           }
           
-          message += `💰 *Total:* ${formatCurrency(total)}\n\n¡Gracias por tu confianza!`
+          message += `*TOTAL: ${formatCurrency(total)}*\n`
+
+          // Plan de cuotas (solo si aplica)
+          if (type === "RECIBO" && installmentsNumber > 1) {
+            message += `\n💳 *${installmentsNumber} cuotas de ${formatCurrency(installmentAmount)}*\n`
+          }
+
+          message += `\n`
+
+          // Información de entrega
+          const hasCatalogo = items.some(i => i.source === "CATALOGO")
+          const hasStock = items.some(i => i.source === "STOCK")
+          
+          if (hasStock && hasCatalogo) {
+            message += `📦 Entrega: Productos en stock inmediatos\n`
+            message += `   Catálogo en 7-10 días hábiles\n`
+          } else if (hasCatalogo) {
+            message += `📦 Entrega estimada: 7-10 días hábiles\n`
+          } else {
+            message += `📦 Disponible para entrega inmediata\n`
+          }
+
+          message += `🚚 ${shippingType}\n`
+          
+          if (type === "PRESUPUESTO" && validDays) {
+            message += `⏱️ Válido por ${validDays} días\n`
+          }
+
+          message += `\n`
+          message += `Cualquier consulta, estoy a disposición.\n\n`
+          message += `*AZUL COLCHONES*\n`
+          message += `Balerdi 855, Villa María\n`
+          message += `Garantía oficial PIERO`
 
           const clientPhone = client.phone.replace(/\D/g, "")
           const whatsappUrl = `https://wa.me/${clientPhone}?text=${encodeURIComponent(message)}`
           
           window.open(whatsappUrl, "_blank")
-          toast.success("Documento enviado al cliente")
+          toast.success(type === "PRESUPUESTO" ? "Presupuesto enviado" : "Recibo enviado")
         }
       } else {
         toast.success("Borrador guardado")
@@ -426,7 +465,7 @@ function NuevoDocumentoContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 p-4 pt-20 md:p-8 md:pt-8">
       <div className="mx-auto max-w-6xl">
-        {/* Header Responsive */}
+        {/* Header */}
         <div className="mb-6 md:mb-8">
           <div className="mb-4 flex items-center gap-3 md:mb-6 md:gap-4">
             <Link href="/documentos">
@@ -450,7 +489,7 @@ function NuevoDocumentoContent() {
             </div>
           </div>
 
-          {/* Action Buttons - Sticky en mobile */}
+          {/* Action Buttons */}
           <div className="fixed bottom-0 left-0 right-0 z-40 flex gap-2 border-t border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-900/10 backdrop-blur-xl md:relative md:z-auto md:border-0 md:bg-transparent md:p-0 md:shadow-none">
             <Button
               variant="outline"
@@ -487,7 +526,7 @@ function NuevoDocumentoContent() {
           </div>
         </div>
 
-        {/* Content Grid - Responsive */}
+        {/* Content Grid */}
         <div className="space-y-4 pb-24 md:grid md:gap-6 md:space-y-0 md:pb-0 lg:grid-cols-3">
           {/* Main Content */}
           <div className="space-y-4 md:space-y-6 lg:col-span-2">
@@ -631,7 +670,7 @@ function NuevoDocumentoContent() {
 
           {/* Sidebar */}
           <div className="space-y-4 md:space-y-6">
-            {/* Payment (only for Recibo) */}
+            {/* Payment */}
             {type === "RECIBO" && (
               <div className="group relative" style={{ animation: 'slideIn 0.7s ease-out' }}>
                 <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
@@ -680,7 +719,7 @@ function NuevoDocumentoContent() {
               </div>
             )}
 
-            {/* Validity (only for Presupuesto) */}
+            {/* Validity */}
             {type === "PRESUPUESTO" && (
               <div className="group relative" style={{ animation: 'slideIn 0.7s ease-out' }}>
                 <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
@@ -835,7 +874,6 @@ function NuevoDocumentoContent() {
                         </span>
                       </div>
 
-                      {/* ✅ Mostrar plan de cuotas si aplica */}
                       {type === "RECIBO" && paymentMethod !== "CONTADO" && installmentAmount > 0 && !loadingRates && (
                         <div className="rounded-xl border-2 border-blue-300/50 bg-gradient-to-br from-blue-100/80 to-indigo-100/60 p-3 shadow-inner md:p-4">
                           <div className="flex items-center justify-between">
