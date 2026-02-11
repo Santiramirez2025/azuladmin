@@ -6,8 +6,6 @@ import Link from "next/link"
 import {
   ArrowLeft,
   Send,
-  Download,
-  Copy,
   Printer,
   CheckCircle,
   XCircle,
@@ -16,14 +14,12 @@ import {
   Warehouse,
   MessageCircle,
   Edit,
-  MoreVertical,
   Sparkles,
   Package,
   Calendar,
   User,
   FileText,
   ShieldCheck,
-  CreditCard,
   Receipt,
   DollarSign,
   AlertTriangle,
@@ -129,18 +125,27 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
   const router = useRouter()
   const [document, setDocument] = useState<DocumentDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const previewRef = useRef<HTMLDivElement>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const printRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const fetchDocument = async () => {
       try {
         const res = await fetch(`/api/documents/${resolvedParams.id}`)
-        if (res.ok) {
-          const data = await res.json()
-          setDocument(data)
+        if (!res.ok) {
+          if (res.status === 404) {
+            setError("not_found")
+          } else {
+            setError("server_error")
+          }
+          return
         }
+        const data = await res.json()
+        setDocument(data)
       } catch (error) {
         console.error("Error fetching document:", error)
+        setError("network_error")
       } finally {
         setIsLoading(false)
       }
@@ -149,20 +154,33 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
   }, [resolvedParams.id])
 
   const updateStatus = async (status: DocumentStatus) => {
-    if (!document) return
+    if (!document || isUpdating) return
+    
+    setIsUpdating(true)
     try {
       const res = await fetch(`/api/documents/${document.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       })
-      if (res.ok) {
-        const updated = await res.json()
-        setDocument(updated)
+      
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || "Failed to update status")
       }
-    } catch (error) {
+      
+      const updated = await res.json()
+      setDocument(updated)
+    } catch (error: any) {
       console.error("Error updating status:", error)
+      alert(`Error al actualizar el estado: ${error.message}`)
+    } finally {
+      setIsUpdating(false)
     }
+  }
+
+  const handlePrint = () => {
+    window.print()
   }
 
   const sendWhatsApp = () => {
@@ -204,7 +222,6 @@ ${itemsList}
 
     message += `\n\n💵 *TOTAL: ${formatCurrency(document.total)}*`
 
-    // ✅ INFORMACIÓN DE PAGO
     if (document.type === "RECIBO") {
       if (document.amountPaid && document.amountPaid > 0) {
         message += `\n✅ *Pagado (${document.paymentType || "Efectivo"}):* ${formatCurrency(document.amountPaid)}`
@@ -229,7 +246,7 @@ ${itemsList}
 📦 ${document.shippingType}`
 
     if (hasCatalogo) {
-      message += `\n⏱️ Entrega estimada: 24/48hs`
+      message += `\n⏱️ Entrega estimada: 7-10 días`
     }
 
     message += `
@@ -257,7 +274,24 @@ ${itemsList}
     )
   }
 
-  if (!document) {
+  if (error || !document) {
+    const errorMessages = {
+      not_found: {
+        title: "Documento no encontrado",
+        description: "El documento que buscas no existe o fue eliminado"
+      },
+      server_error: {
+        title: "Error del servidor",
+        description: "Ocurrió un error al cargar el documento. Por favor, intenta nuevamente."
+      },
+      network_error: {
+        title: "Error de conexión",
+        description: "No se pudo conectar con el servidor. Verifica tu conexión a internet."
+      }
+    }
+
+    const errorInfo = errorMessages[error as keyof typeof errorMessages] || errorMessages.server_error
+
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 p-4 md:gap-6">
         <div className="relative">
@@ -265,8 +299,12 @@ ${itemsList}
           <FileText className="relative h-16 w-16 text-slate-300 md:h-20 md:w-20" />
         </div>
         <div className="text-center">
-          <h2 className="mb-2 text-xl font-bold text-slate-900 md:text-2xl">Documento no encontrado</h2>
-          <p className="text-sm text-slate-600 md:text-base">El documento que buscas no existe o fue eliminado</p>
+          <h2 className="mb-2 text-xl font-bold text-slate-900 md:text-2xl">
+            {errorInfo.title}
+          </h2>
+          <p className="text-sm text-slate-600 md:text-base">
+            {errorInfo.description}
+          </p>
         </div>
         <Link href="/documentos">
           <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 text-sm font-semibold shadow-lg shadow-blue-500/25 md:text-base">
@@ -285,7 +323,7 @@ ${itemsList}
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 p-4 pt-20 pb-24 md:p-8 md:pt-8 md:pb-8">
       <div className="mx-auto max-w-7xl">
         {/* Header Responsive */}
-        <div className="mb-6 md:mb-8">
+        <div className="mb-6 md:mb-8 print:hidden">
           <div className="mb-4 flex items-center gap-3 md:mb-6 md:gap-4">
             <Link href="/documentos">
               <div className="group relative">
@@ -323,7 +361,8 @@ ${itemsList}
               variant="outline" 
               size="sm" 
               onClick={sendWhatsApp}
-              className="flex-1 border-slate-200 bg-white text-xs font-semibold shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 md:flex-none md:text-sm"
+              disabled={isUpdating}
+              className="flex-1 border-slate-200 bg-white text-xs font-semibold shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50 md:flex-none md:text-sm"
             >
               <MessageCircle className="mr-1.5 h-3.5 w-3.5 md:mr-2 md:h-4 md:w-4" />
               <span className="hidden sm:inline">WhatsApp</span>
@@ -332,7 +371,7 @@ ${itemsList}
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => window.print()}
+              onClick={handlePrint}
               className="flex-1 border-slate-200 bg-white text-xs font-semibold shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 md:flex-none md:text-sm"
             >
               <Printer className="mr-1.5 h-3.5 w-3.5 md:mr-2 md:h-4 md:w-4" />
@@ -355,19 +394,19 @@ ${itemsList}
         </div>
 
         <div className="space-y-4 md:grid md:gap-6 md:space-y-0 lg:grid-cols-3">
-          {/* Documento Preview - Mobile Optimized */}
+          {/* Documento Preview */}
           <div className="lg:col-span-2">
             <div className="group relative">
-              <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
-              <Card className="relative overflow-hidden border-0 bg-white/95 shadow-2xl shadow-blue-500/10 backdrop-blur-sm">
-                <div className="absolute -right-16 -top-16 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/10 to-indigo-600/10 blur-3xl md:h-48 md:w-48"></div>
-                <CardContent className="relative p-4 md:p-8" ref={previewRef}>
+              <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 opacity-20 blur transition duration-500 group-hover:opacity-30 print:hidden"></div>
+              <Card className="relative overflow-hidden border-0 bg-white/95 shadow-2xl shadow-blue-500/10 backdrop-blur-sm print:shadow-none">
+                <div className="absolute -right-16 -top-16 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/10 to-indigo-600/10 blur-3xl md:h-48 md:w-48 print:hidden"></div>
+                <CardContent className="relative p-4 md:p-8" ref={printRef} id="printable-document">
                   {/* Header del documento */}
                   <div className="mb-6 flex flex-col gap-4 border-b-2 border-slate-200 pb-4 sm:flex-row sm:justify-between md:mb-8 md:pb-6">
                     <div className="flex-1">
                       <div className="mb-2 flex items-center gap-2">
                         <Sparkles className="h-5 w-5 text-blue-600 md:h-6 md:w-6" />
-                        <h2 className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-xl font-bold text-transparent md:text-3xl">
+                        <h2 className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-xl font-bold text-transparent md:text-3xl print:text-blue-600 print:bg-none">
                           AZUL COLCHONES
                         </h2>
                       </div>
@@ -379,7 +418,7 @@ ${itemsList}
                       </p>
                     </div>
                     <div className="text-left sm:text-right">
-                      <div className="mb-2 inline-block rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 px-3 py-1.5 md:px-4 md:py-2">
+                      <div className="mb-2 inline-block rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 px-3 py-1.5 md:px-4 md:py-2 print:bg-blue-50">
                         <p className="text-xs font-bold text-blue-600 md:text-sm">
                           {typeLabels[document.type].toUpperCase()}
                         </p>
@@ -393,10 +432,10 @@ ${itemsList}
                     </div>
                   </div>
 
-                  {/* Cliente - Mobile Optimized */}
-                  <div className="mb-6 overflow-hidden rounded-xl border border-slate-200/50 bg-gradient-to-br from-slate-50/80 to-blue-50/50 p-3.5 shadow-inner md:mb-8 md:p-5">
+                  {/* Cliente */}
+                  <div className="mb-6 overflow-hidden rounded-xl border border-slate-200/50 bg-gradient-to-br from-slate-50/80 to-blue-50/50 p-3.5 shadow-inner md:mb-8 md:p-5 print:bg-slate-50">
                     <div className="mb-2 flex items-center gap-2">
-                      <div className="rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 p-1 shadow-md md:p-1.5">
+                      <div className="rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 p-1 shadow-md md:p-1.5 print:bg-blue-600">
                         <User className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
                       </div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 md:text-xs">Cliente</p>
@@ -413,10 +452,10 @@ ${itemsList}
                     </div>
                   </div>
 
-                  {/* Items Table - Mobile Responsive */}
+                  {/* Items Table */}
                   <div className="mb-6 overflow-hidden rounded-xl border border-slate-200/50 md:mb-8">
                     {/* Mobile: Card View */}
-                    <div className="divide-y divide-slate-100 md:hidden">
+                    <div className="divide-y divide-slate-100 md:hidden print:hidden">
                       {document.items.map((item) => (
                         <div key={item.id} className="space-y-2 p-3">
                           <div className="flex items-start justify-between gap-2">
@@ -450,9 +489,9 @@ ${itemsList}
                     </div>
 
                     {/* Desktop: Table View */}
-                    <table className="hidden w-full md:table">
+                    <table className="hidden w-full md:table print:table">
                       <thead>
-                        <tr className="bg-gradient-to-r from-slate-50 to-blue-50/50 text-left text-xs font-bold uppercase tracking-wider text-slate-600">
+                        <tr className="bg-gradient-to-r from-slate-50 to-blue-50/50 text-left text-xs font-bold uppercase tracking-wider text-slate-600 print:bg-slate-100">
                           <th className="px-4 py-3">Producto</th>
                           <th className="px-4 py-3 text-center">Cant.</th>
                           <th className="px-4 py-3 text-right">Precio</th>
@@ -461,7 +500,7 @@ ${itemsList}
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {document.items.map((item) => (
-                          <tr key={item.id} className="transition-colors hover:bg-slate-50/50">
+                          <tr key={item.id} className="transition-colors hover:bg-slate-50/50 print:hover:bg-transparent">
                             <td className="px-4 py-4">
                               <div className="flex flex-col gap-1.5">
                                 <div className="flex items-center gap-2">
@@ -482,7 +521,7 @@ ${itemsList}
                               </div>
                             </td>
                             <td className="px-4 py-4 text-center">
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 font-bold text-blue-700">
+                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 font-bold text-blue-700 print:bg-blue-50">
                                 {item.quantity}
                               </span>
                             </td>
@@ -498,9 +537,9 @@ ${itemsList}
                     </table>
                   </div>
 
-                  {/* Totales - Mobile Responsive */}
+                  {/* Totales */}
                   <div className="flex justify-end">
-                    <div className="w-full space-y-2.5 rounded-xl border border-slate-200/50 bg-gradient-to-br from-slate-50/50 to-blue-50/30 p-4 shadow-inner md:w-80 md:space-y-3 md:p-6">
+                    <div className="w-full space-y-2.5 rounded-xl border border-slate-200/50 bg-gradient-to-br from-slate-50/50 to-blue-50/30 p-4 shadow-inner md:w-80 md:space-y-3 md:p-6 print:w-96 print:bg-slate-50">
                       <div className="flex justify-between text-xs md:text-sm">
                         <span className="font-medium text-slate-600">Subtotal</span>
                         <span className="font-bold text-slate-900">{formatCurrency(document.subtotal)}</span>
@@ -520,12 +559,12 @@ ${itemsList}
                         </div>
                       )}
                       <div className="my-2.5 h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent md:my-3"></div>
-                      <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 p-3 shadow-lg shadow-blue-500/30 md:p-4">
+                      <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 p-3 shadow-lg shadow-blue-500/30 md:p-4 print:bg-blue-600 print:shadow-none">
                         <span className="text-xs font-bold text-white md:text-sm">TOTAL</span>
                         <span className="text-2xl font-bold text-white drop-shadow-lg md:text-3xl">{formatCurrency(document.total)}</span>
                       </div>
 
-                      {/* ✅ INFORMACIÓN DE PAGO EN DOCUMENTO */}
+                      {/* INFORMACIÓN DE PAGO */}
                       {document.type === "RECIBO" && (
                         <>
                           {document.amountPaid !== undefined && document.amountPaid !== null && document.amountPaid > 0 && (
@@ -566,32 +605,32 @@ ${itemsList}
                     </div>
                   </div>
 
-                  {/* Footer - Mobile Responsive */}
-                  <div className="mt-6 rounded-xl border border-slate-200/50 bg-gradient-to-br from-slate-50/50 to-blue-50/30 p-4 md:mt-8 md:p-5">
+                  {/* Footer */}
+                  <div className="mt-6 rounded-xl border border-slate-200/50 bg-gradient-to-br from-slate-50/50 to-blue-50/30 p-4 md:mt-8 md:p-5 print:bg-slate-50">
                     <div className="mb-3 flex flex-wrap gap-3 text-xs md:gap-4 md:text-sm">
                       <div className="flex items-center gap-2 font-medium text-slate-700">
-                        <div className="rounded-lg bg-orange-100 p-1 md:p-1.5">
+                        <div className="rounded-lg bg-orange-100 p-1 md:p-1.5 print:bg-orange-200">
                           <Truck className="h-3.5 w-3.5 md:h-4 md:w-4 text-orange-600" />
                         </div>
                         <span className="text-xs md:text-sm">{document.shippingType}</span>
                       </div>
                       {hasCatalogoItems && (
                         <div className="flex items-center gap-2 font-medium text-slate-700">
-                          <div className="rounded-lg bg-blue-100 p-1 md:p-1.5">
+                          <div className="rounded-lg bg-blue-100 p-1 md:p-1.5 print:bg-blue-200">
                             <Clock className="h-3.5 w-3.5 md:h-4 md:w-4 text-blue-600" />
                           </div>
                           <span className="text-xs md:text-sm">Entrega: 7-10 días</span>
                         </div>
                       )}
                       <div className="flex items-center gap-2 font-medium text-slate-700">
-                        <div className="rounded-lg bg-emerald-100 p-1 md:p-1.5">
+                        <div className="rounded-lg bg-emerald-100 p-1 md:p-1.5 print:bg-emerald-200">
                           <ShieldCheck className="h-3.5 w-3.5 md:h-4 md:w-4 text-emerald-600" />
                         </div>
                         <span className="text-xs md:text-sm">Garantía PIERO</span>
                       </div>
                     </div>
                     {document.observations && (
-                      <div className="mt-3 rounded-lg bg-white/60 p-2.5 backdrop-blur-sm md:p-3">
+                      <div className="mt-3 rounded-lg bg-white/60 p-2.5 backdrop-blur-sm md:p-3 print:bg-white">
                         <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 md:text-xs">
                           Observaciones
                         </p>
@@ -606,8 +645,8 @@ ${itemsList}
             </div>
           </div>
 
-          {/* Sidebar - Mobile Optimized */}
-          <div className="space-y-4 md:space-y-6">
+          {/* Sidebar */}
+          <div className="space-y-4 md:space-y-6 print:hidden">
             {/* Acciones de Estado */}
             <div className="group relative" style={{ animation: 'slideIn 0.4s ease-out' }}>
               <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
@@ -624,29 +663,32 @@ ${itemsList}
                 <CardContent className="relative space-y-2.5 p-4 md:space-y-3 md:p-6">
                   {document.status === "DRAFT" && (
                     <Button
-                      className="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-sm font-bold shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 hover:shadow-xl hover:shadow-emerald-500/40 md:text-base"
+                      className="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-sm font-bold shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 hover:shadow-xl hover:shadow-emerald-500/40 disabled:opacity-50 disabled:cursor-not-allowed md:text-base"
                       onClick={() => {
                         sendWhatsApp()
                         updateStatus("SENT")
                       }}
+                      disabled={isUpdating}
                     >
                       <Send className="mr-2 h-4 w-4" />
-                      Enviar al Cliente
+                      {isUpdating ? "Enviando..." : "Enviar al Cliente"}
                     </Button>
                   )}
                   {document.status === "SENT" && (
                     <>
                       <Button
-                        className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-sm font-bold shadow-lg shadow-blue-500/25 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-500/40 md:text-base"
+                        className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-sm font-bold shadow-lg shadow-blue-500/25 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-500/40 disabled:opacity-50 md:text-base"
                         onClick={() => updateStatus("APPROVED")}
+                        disabled={isUpdating}
                       >
                         <CheckCircle className="mr-2 h-4 w-4" />
-                        Marcar como Aprobado
+                        {isUpdating ? "Procesando..." : "Marcar como Aprobado"}
                       </Button>
                       <Button
                         variant="outline"
-                        className="w-full border-red-200 bg-white/50 text-sm font-semibold text-red-600 transition-all hover:scale-105 hover:border-red-300 hover:bg-red-50 md:text-base"
+                        className="w-full border-red-200 bg-white/50 text-sm font-semibold text-red-600 transition-all hover:scale-105 hover:border-red-300 hover:bg-red-50 disabled:opacity-50 md:text-base"
                         onClick={() => updateStatus("CANCELLED")}
+                        disabled={isUpdating}
                       >
                         <XCircle className="mr-2 h-4 w-4" />
                         Cancelar
@@ -655,11 +697,12 @@ ${itemsList}
                   )}
                   {document.status === "APPROVED" && (
                     <Button
-                      className="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-sm font-bold shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 hover:shadow-xl hover:shadow-emerald-500/40 md:text-base"
+                      className="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-sm font-bold shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 hover:shadow-xl hover:shadow-emerald-500/40 disabled:opacity-50 md:text-base"
                       onClick={() => updateStatus("COMPLETED")}
+                      disabled={isUpdating}
                     >
                       <CheckCircle className="mr-2 h-4 w-4" />
-                      Marcar como Completado
+                      {isUpdating ? "Procesando..." : "Marcar como Completado"}
                     </Button>
                   )}
 
@@ -682,7 +725,7 @@ ${itemsList}
               </Card>
             </div>
 
-            {/* ✅ NUEVA CARD: ESTADO DE PAGO */}
+            {/* Estado de Pago */}
             {document.type === "RECIBO" && (
               <div className="group relative" style={{ animation: 'slideIn 0.45s ease-out' }}>
                 <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
@@ -697,7 +740,6 @@ ${itemsList}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="relative space-y-3 p-4 md:space-y-3.5 md:p-5">
-                    {/* Tipo de Pago */}
                     {document.paymentType && (
                       <div className="rounded-lg bg-slate-50 p-3">
                         <p className="text-xs font-semibold text-slate-500">Método de Pago</p>
@@ -713,7 +755,6 @@ ${itemsList}
                       </div>
                     )}
 
-                    {/* Monto Pagado */}
                     {document.amountPaid !== undefined && document.amountPaid !== null && document.amountPaid > 0 && (
                       <div className="rounded-lg bg-emerald-50 p-3">
                         <p className="text-xs font-semibold text-emerald-700">Monto Pagado</p>
@@ -723,7 +764,6 @@ ${itemsList}
                       </div>
                     )}
 
-                    {/* Saldo Pendiente o Pago Completo */}
                     {document.balance !== undefined && document.balance !== null && document.balance > 0 ? (
                       <div className="rounded-xl border-2 border-orange-300 bg-gradient-to-br from-orange-100 to-amber-100 p-4">
                         <div className="flex items-center justify-between">
@@ -753,7 +793,6 @@ ${itemsList}
                       </div>
                     ) : null}
 
-                    {/* A Cuenta (sin pago registrado) */}
                     {(!document.amountPaid || document.amountPaid === 0) && (
                       <div className="rounded-xl border-2 border-blue-300/50 bg-gradient-to-br from-blue-100/80 to-cyan-100/60 p-3 shadow-inner">
                         <div className="flex items-center gap-2">
@@ -901,18 +940,42 @@ ${itemsList}
         }
         
         @media print {
+          @page {
+            margin: 1.5cm;
+            size: A4;
+          }
+          
+          body {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+          
           body * {
             visibility: hidden;
           }
-          #printable-area,
-          #printable-area * {
+          
+          #printable-document,
+          #printable-document * {
             visibility: visible;
           }
-          #printable-area {
+          
+          #printable-document {
             position: absolute;
             left: 0;
             top: 0;
             width: 100%;
+            background: white;
+          }
+          
+          .bg-gradient-to-r,
+          .bg-gradient-to-br {
+            background: #3b82f6 !important;
+          }
+          
+          table,
+          th,
+          td {
+            border-color: #e2e8f0 !important;
           }
         }
       `}</style>
