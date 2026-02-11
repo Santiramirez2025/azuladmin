@@ -18,6 +18,9 @@ import {
   Sparkles,
   CheckCircle2,
   Package,
+  DollarSign,
+  Receipt,
+  AlertTriangle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -84,6 +87,15 @@ const SHIPPING_OPTIONS = [
   "Envío interior (+costo)",
 ]
 
+const PAYMENT_TYPES = [
+  "Efectivo",
+  "Transferencia",
+  "Débito",
+  "Crédito",
+  "Cheque",
+  "Mixto",
+]
+
 const DELIVERY_WHATSAPP = "5493535694658"
 
 // ============================================================================
@@ -134,7 +146,6 @@ function ClientSearch({ value, onChange }: ClientSearchProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   
-  // Quick add client state
   const [quickName, setQuickName] = useState("")
   const [quickPhone, setQuickPhone] = useState("")
   const [isCreating, setIsCreating] = useState(false)
@@ -438,6 +449,10 @@ function NuevoDocumentoContent() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [saveAction, setSaveAction] = useState<"draft" | "send">("draft")
 
+  // ✅ NUEVOS ESTADOS PARA PAGOS PARCIALES
+  const [amountPaid, setAmountPaid] = useState<number>(0)
+  const [paymentType, setPaymentType] = useState("Efectivo")
+
   const PAYMENT_METHODS = [
     { value: "CONTADO" as const, label: "Contado / Transferencia", surcharge: paymentRates["1"] || 0 },
     { value: "CUOTAS_3" as const, label: "3 Cuotas", surcharge: paymentRates["3"] || 18 },
@@ -455,17 +470,20 @@ function NuevoDocumentoContent() {
   const installmentsNumber = paymentMethod === "CONTADO" ? 1 : parseInt(paymentMethod.split("_")[1]) || 1
   const installmentAmount = installmentsNumber > 1 ? total / installmentsNumber : 0
 
+  // ✅ CÁLCULO DE SALDO
+  const balance = type === "RECIBO" ? Math.max(0, total - amountPaid) : 0
+  const isPaidInFull = type === "RECIBO" && amountPaid >= total && total > 0
+  const hasPartialPayment = type === "RECIBO" && amountPaid > 0 && amountPaid < total
+
   // ✅ Atajos de teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + S = Guardar borrador
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
         if (isValid && !isSubmitting) {
           handleSubmit("draft")
         }
       }
-      // Ctrl/Cmd + Enter = Guardar y enviar
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault()
         if (isValid && !isSubmitting) {
@@ -476,7 +494,7 @@ function NuevoDocumentoContent() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isValid, isSubmitting])
+  }, [isValid, isSubmitting, client, items, amountPaid])
 
   const handleSubmit = async (action: "draft" | "send") => {
     if (!client || items.length === 0) {
@@ -517,6 +535,9 @@ function NuevoDocumentoContent() {
           installments: type === "RECIBO" ? installmentsNumber : undefined,
           shippingType,
           shippingCost,
+          // ✅ NUEVOS CAMPOS DE PAGO
+          amountPaid: type === "RECIBO" && amountPaid > 0 ? amountPaid : undefined,
+          paymentType: type === "RECIBO" && amountPaid > 0 ? paymentType : undefined,
         }),
       })
 
@@ -539,7 +560,6 @@ function NuevoDocumentoContent() {
         }
 
         if (type === "REMITO") {
-          // Mensaje para repartidor
           const productList = items
             .map((item, index) => 
               `${index + 1}. ${item.productName} ${item.productSize ? `- ${item.productSize}` : ""} x${item.quantity}`
@@ -560,7 +580,7 @@ function NuevoDocumentoContent() {
           window.open(deliveryWhatsappUrl, "_blank")
           toast.success("Remito enviado al repartidor")
         } else {
-          // ✅ MENSAJE PROFESIONAL ÚNICO para cliente
+          // ✅ MENSAJE PROFESIONAL CON INFO DE PAGO
           const productList = items
             .map((item) => {
               const stockBadge = item.source === "STOCK" ? " ✓" : ""
@@ -585,9 +605,22 @@ function NuevoDocumentoContent() {
           
           message += `*TOTAL: ${formatCurrency(total)}*\n`
 
-          // Plan de cuotas (solo si aplica)
-          if (type === "RECIBO" && installmentsNumber > 1) {
-            message += `\n💳 *${installmentsNumber} cuotas de ${formatCurrency(installmentAmount)}*\n`
+          // ✅ INFORMACIÓN DE PAGO
+          if (type === "RECIBO") {
+            if (amountPaid > 0) {
+              message += `\n✅ *Pagado (${paymentType}):* ${formatCurrency(amountPaid)}\n`
+            }
+            
+            if (balance > 0) {
+              message += `⏳ *Saldo Pendiente:* ${formatCurrency(balance)}\n`
+            } else if (amountPaid >= total && total > 0) {
+              message += `\n🎉 *PAGO COMPLETO*\n`
+            }
+
+            // Plan de cuotas
+            if (installmentsNumber > 1) {
+              message += `\n💳 *${installmentsNumber} cuotas de ${formatCurrency(installmentAmount)}*\n`
+            }
           }
 
           message += `\n`
@@ -845,7 +878,7 @@ function NuevoDocumentoContent() {
 
           {/* Sidebar */}
           <div className="space-y-4 md:space-y-6">
-            {/* Payment */}
+            {/* Payment Method */}
             {type === "RECIBO" && (
               <div className="group relative" style={{ animation: 'slideIn 0.7s ease-out' }}>
                 <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
@@ -888,6 +921,131 @@ function NuevoDocumentoContent() {
                           )}
                         </button>
                       ))
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* ✅ NUEVA CARD: DETALLES DEL PAGO */}
+            {type === "RECIBO" && (
+              <div className="group relative" style={{ animation: 'slideIn 0.75s ease-out' }}>
+                <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
+                <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-emerald-500/5 backdrop-blur-sm">
+                  <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/10 to-green-600/10 blur-3xl md:h-40 md:w-40"></div>
+                  <CardHeader className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-emerald-50/50 p-4 md:pb-4">
+                    <CardTitle className="flex items-center gap-2 text-sm font-bold text-slate-900 md:gap-2.5 md:text-base">
+                      <div className="rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 p-1 shadow-lg shadow-emerald-500/20 md:p-1.5">
+                        <DollarSign className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
+                      </div>
+                      Detalles del Pago
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="relative space-y-3 p-3 md:space-y-4 md:p-4">
+                    {/* Tipo de Pago */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-700">Tipo de Pago</Label>
+                      <Select value={paymentType} onValueChange={setPaymentType}>
+                        <SelectTrigger className="border-slate-200 bg-white/50 text-sm font-semibold transition-all focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PAYMENT_TYPES.map((type) => (
+                            <SelectItem key={type} value={type} className="text-sm">
+                              {type === "Efectivo" && "💵 "}
+                              {type === "Transferencia" && "🏦 "}
+                              {type === "Débito" && "💳 "}
+                              {type === "Crédito" && "💳 "}
+                              {type === "Cheque" && "📝 "}
+                              {type === "Mixto" && "🔀 "}
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Monto Pagado */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-700">
+                        Monto Pagado
+                        <span className="ml-1 text-[10px] font-normal text-slate-500">
+                          (dejar en 0 si es a cuenta)
+                        </span>
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-600">
+                          $
+                        </span>
+                        <Input
+                          type="number"
+                          min="0"
+                          max={total}
+                          step="0.01"
+                          value={amountPaid || ""}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value) || 0
+                            setAmountPaid(Math.min(value, total))
+                          }}
+                          className="border-slate-200 bg-white/50 pl-7 text-sm font-semibold transition-all focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      {total > 0 && (
+                        <p className="text-[10px] text-slate-500">
+                          Total: {formatCurrency(total)}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* ✅ INDICADOR DE SALDO PENDIENTE */}
+                    {hasPartialPayment && (
+                      <div className="rounded-xl border-2 border-orange-300/50 bg-gradient-to-br from-orange-100/80 to-amber-100/60 p-3 shadow-inner md:p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="flex items-center gap-1.5 text-sm font-semibold text-orange-900">
+                              <AlertTriangle className="h-4 w-4" />
+                              Saldo Pendiente
+                            </p>
+                            <p className="text-xs text-orange-700">
+                              A cobrar al cliente
+                            </p>
+                          </div>
+                          <p className="text-2xl font-bold text-orange-900">
+                            {formatCurrency(balance)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ✅ INDICADOR DE PAGO COMPLETO */}
+                    {isPaidInFull && (
+                      <div className="rounded-xl border-2 border-emerald-300/50 bg-gradient-to-br from-emerald-100/80 to-green-100/60 p-4 text-center shadow-inner">
+                        <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-600 drop-shadow-sm" />
+                        <p className="text-base font-bold text-emerald-900">
+                          Pago Completo
+                        </p>
+                        <p className="text-xs text-emerald-700">
+                          Sin saldo pendiente
+                        </p>
+                      </div>
+                    )}
+
+                    {/* ✅ INDICADOR A CUENTA */}
+                    {amountPaid === 0 && total > 0 && (
+                      <div className="rounded-xl border-2 border-blue-300/50 bg-gradient-to-br from-blue-100/80 to-cyan-100/60 p-3 shadow-inner">
+                        <div className="flex items-center gap-2">
+                          <Receipt className="h-5 w-5 text-blue-600" />
+                          <div>
+                            <p className="text-sm font-bold text-blue-900">
+                              A Cuenta
+                            </p>
+                            <p className="text-xs text-blue-700">
+                              Sin pago registrado
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -1048,6 +1206,25 @@ function NuevoDocumentoContent() {
                           {formatCurrency(total)}
                         </span>
                       </div>
+
+                      {/* ✅ RESUMEN DE PAGO */}
+                      {type === "RECIBO" && total > 0 && (
+                        <>
+                          {amountPaid > 0 && (
+                            <div className="flex justify-between rounded-lg bg-emerald-50 px-3 py-2 text-sm">
+                              <span className="font-medium text-emerald-700">Pagado</span>
+                              <span className="font-bold text-emerald-700">{formatCurrency(amountPaid)}</span>
+                            </div>
+                          )}
+                          
+                          {balance > 0 && (
+                            <div className="flex justify-between rounded-lg bg-orange-50 px-3 py-2 text-sm">
+                              <span className="font-bold text-orange-700">Saldo Pendiente</span>
+                              <span className="text-lg font-bold text-orange-700">{formatCurrency(balance)}</span>
+                            </div>
+                          )}
+                        </>
+                      )}
 
                       {type === "RECIBO" && paymentMethod !== "CONTADO" && installmentAmount > 0 && !loadingRates && (
                         <div className="rounded-xl border-2 border-blue-300/50 bg-gradient-to-br from-blue-100/80 to-indigo-100/60 p-3 shadow-inner md:p-4">

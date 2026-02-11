@@ -23,6 +23,10 @@ import {
   User,
   FileText,
   ShieldCheck,
+  CreditCard,
+  Receipt,
+  DollarSign,
+  AlertTriangle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -200,25 +204,31 @@ ${itemsList}
 
     message += `\n\n💵 *TOTAL: ${formatCurrency(document.total)}*`
 
-    if (document.installments && document.installments > 1) {
-      const installmentAmount = Math.round(document.total / document.installments)
-      message += `\n📅 *${document.installments} cuotas de ${formatCurrency(installmentAmount)}*`
-    }
-
-    if (document.type === "RECIBO" && document.amountPaid && document.amountPaid > 0) {
-      message += `\n✅ *Pagado:* ${formatCurrency(document.amountPaid)}`
+    // ✅ INFORMACIÓN DE PAGO
+    if (document.type === "RECIBO") {
+      if (document.amountPaid && document.amountPaid > 0) {
+        message += `\n✅ *Pagado (${document.paymentType || "Efectivo"}):* ${formatCurrency(document.amountPaid)}`
+      }
+      
       if (document.balance && document.balance > 0) {
-        message += `\n⏳ *Saldo:* ${formatCurrency(document.balance)}`
+        message += `\n⏳ *Saldo Pendiente:* ${formatCurrency(document.balance)}`
+      } else if (document.amountPaid && document.amountPaid >= document.total) {
+        message += `\n\n🎉 *PAGO COMPLETO*`
+      }
+
+      if (document.installments && document.installments > 1) {
+        const installmentAmount = Math.round(document.total / document.installments)
+        message += `\n📅 *${document.installments} cuotas de ${formatCurrency(installmentAmount)}*`
       }
     }
 
-    const hasCatalogoItems = document.items.some((i) => i.source === "CATALOGO")
+    const hasCatalogo = document.items.some((i) => i.source === "CATALOGO")
 
     message += `
 ━━━━━━━━━━━━━━━━━━━━━
 📦 ${document.shippingType}`
 
-    if (hasCatalogoItems) {
+    if (hasCatalogo) {
       message += `\n⏱️ Entrega estimada: 24/48hs`
     }
 
@@ -365,7 +375,7 @@ ${itemsList}
                         Balerdi 855 - Villa María, Córdoba
                       </p>
                       <p className="text-[10px] text-slate-500 md:text-sm">
-                        Tel: 0353-4XXXXXX • info@azulcolchones.com
+                        Tel: 03534096566 • info@azulcolchones.com
                       </p>
                     </div>
                     <div className="text-left sm:text-right">
@@ -514,24 +524,44 @@ ${itemsList}
                         <span className="text-xs font-bold text-white md:text-sm">TOTAL</span>
                         <span className="text-2xl font-bold text-white drop-shadow-lg md:text-3xl">{formatCurrency(document.total)}</span>
                       </div>
+
+                      {/* ✅ INFORMACIÓN DE PAGO EN DOCUMENTO */}
+                      {document.type === "RECIBO" && (
+                        <>
+                          {document.amountPaid !== undefined && document.amountPaid !== null && document.amountPaid > 0 && (
+                            <div className="flex justify-between rounded-lg bg-emerald-50 px-3 py-2 text-xs md:text-sm">
+                              <span className="font-medium text-emerald-700">
+                                ✅ Pagado ({document.paymentType || "Efectivo"})
+                              </span>
+                              <span className="font-bold text-emerald-700">{formatCurrency(document.amountPaid)}</span>
+                            </div>
+                          )}
+                          
+                          {document.balance !== undefined && document.balance !== null && document.balance > 0 && (
+                            <div className="flex justify-between rounded-lg bg-orange-50 px-3 py-2">
+                              <span className="font-bold text-orange-700">
+                                ⏳ Saldo Pendiente
+                              </span>
+                              <span className="text-xl font-bold text-orange-700">
+                                {formatCurrency(document.balance)}
+                              </span>
+                            </div>
+                          )}
+
+                          {(!document.amountPaid || document.amountPaid === 0) && (
+                            <div className="rounded-lg bg-blue-50 px-3 py-2 text-center">
+                              <p className="text-xs font-semibold text-blue-700">
+                                💼 A Cuenta - Sin pago registrado
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      )}
+
                       {document.installments && document.installments > 1 && (
                         <p className="text-center text-xs font-semibold text-slate-600 md:text-sm">
                           {document.installments} cuotas de {formatCurrency(Math.round(document.total / document.installments))}
                         </p>
-                      )}
-                      {document.type === "RECIBO" && document.amountPaid !== undefined && (
-                        <>
-                          <div className="flex justify-between rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs md:px-3 md:py-2 md:text-sm">
-                            <span className="font-medium text-emerald-700">Pagado</span>
-                            <span className="font-bold text-emerald-700">{formatCurrency(document.amountPaid)}</span>
-                          </div>
-                          {document.balance !== undefined && document.balance > 0 && (
-                            <div className="flex justify-between rounded-lg bg-red-50 px-2.5 py-1.5 text-xs md:px-3 md:py-2 md:text-sm">
-                              <span className="font-bold text-red-700">Saldo Pendiente</span>
-                              <span className="font-bold text-red-700">{formatCurrency(document.balance)}</span>
-                            </div>
-                          )}
-                        </>
                       )}
                     </div>
                   </div>
@@ -651,6 +681,98 @@ ${itemsList}
                 </CardContent>
               </Card>
             </div>
+
+            {/* ✅ NUEVA CARD: ESTADO DE PAGO */}
+            {document.type === "RECIBO" && (
+              <div className="group relative" style={{ animation: 'slideIn 0.45s ease-out' }}>
+                <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-600 opacity-20 blur transition duration-500 group-hover:opacity-30"></div>
+                <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-blue-500/5 backdrop-blur-sm">
+                  <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/10 to-cyan-600/10 blur-3xl md:h-40 md:w-40"></div>
+                  <CardHeader className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-blue-50/50 p-4 md:pb-4">
+                    <CardTitle className="flex items-center gap-2 text-sm font-bold text-slate-900 md:gap-2.5 md:text-base">
+                      <div className="rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 p-1 shadow-lg shadow-blue-500/20 md:p-1.5">
+                        <DollarSign className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
+                      </div>
+                      Estado de Pago
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="relative space-y-3 p-4 md:space-y-3.5 md:p-5">
+                    {/* Tipo de Pago */}
+                    {document.paymentType && (
+                      <div className="rounded-lg bg-slate-50 p-3">
+                        <p className="text-xs font-semibold text-slate-500">Método de Pago</p>
+                        <p className="text-sm font-bold text-slate-900">
+                          {document.paymentType === "Efectivo" && "💵 "}
+                          {document.paymentType === "Transferencia" && "🏦 "}
+                          {document.paymentType === "Débito" && "💳 "}
+                          {document.paymentType === "Crédito" && "💳 "}
+                          {document.paymentType === "Cheque" && "📝 "}
+                          {document.paymentType === "Mixto" && "🔀 "}
+                          {document.paymentType}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Monto Pagado */}
+                    {document.amountPaid !== undefined && document.amountPaid !== null && document.amountPaid > 0 && (
+                      <div className="rounded-lg bg-emerald-50 p-3">
+                        <p className="text-xs font-semibold text-emerald-700">Monto Pagado</p>
+                        <p className="text-2xl font-bold text-emerald-900">
+                          {formatCurrency(document.amountPaid)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Saldo Pendiente o Pago Completo */}
+                    {document.balance !== undefined && document.balance !== null && document.balance > 0 ? (
+                      <div className="rounded-xl border-2 border-orange-300 bg-gradient-to-br from-orange-100 to-amber-100 p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="flex items-center gap-1.5 text-sm font-bold text-orange-900">
+                              <AlertTriangle className="h-4 w-4" />
+                              Saldo Pendiente
+                            </p>
+                            <p className="text-xs text-orange-700">
+                              A cobrar al cliente
+                            </p>
+                          </div>
+                          <p className="text-3xl font-bold text-orange-900">
+                            {formatCurrency(document.balance)}
+                          </p>
+                        </div>
+                      </div>
+                    ) : document.amountPaid !== undefined && document.amountPaid > 0 ? (
+                      <div className="rounded-xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-100 to-green-100 p-4 text-center">
+                        <CheckCircle className="mx-auto mb-2 h-10 w-10 text-emerald-600" />
+                        <p className="text-lg font-bold text-emerald-900">
+                          Pago Completo
+                        </p>
+                        <p className="text-xs text-emerald-700">
+                          Sin saldo pendiente
+                        </p>
+                      </div>
+                    ) : null}
+
+                    {/* A Cuenta (sin pago registrado) */}
+                    {(!document.amountPaid || document.amountPaid === 0) && (
+                      <div className="rounded-xl border-2 border-blue-300/50 bg-gradient-to-br from-blue-100/80 to-cyan-100/60 p-3 shadow-inner">
+                        <div className="flex items-center gap-2">
+                          <Receipt className="h-5 w-5 text-blue-600" />
+                          <div>
+                            <p className="text-sm font-bold text-blue-900">
+                              A Cuenta
+                            </p>
+                            <p className="text-xs text-blue-700">
+                              Sin pago registrado
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {/* Info del Cliente */}
             <div className="group relative" style={{ animation: 'slideIn 0.5s ease-out' }}>
