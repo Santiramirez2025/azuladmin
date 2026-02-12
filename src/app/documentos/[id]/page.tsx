@@ -72,10 +72,7 @@ interface DocumentDetail {
   }[]
 }
 
-const statusConfig: Record<
-  DocumentStatus,
-  { label: string; color: "default" | "secondary" | "success" | "warning" | "destructive"; icon: typeof Clock; gradient: string }
-> = {
+const statusConfig: Record<DocumentStatus, { label: string; color: "default" | "secondary" | "success" | "warning" | "destructive"; icon: typeof Clock; gradient: string }> = {
   DRAFT: { 
     label: "Borrador", 
     color: "secondary", 
@@ -196,64 +193,114 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
   const generateWhatsAppMessage = () => {
     if (!document) return ""
 
-    const typeLabel = typeLabels[document.type].toUpperCase()
-    const itemsList = document.items
-      .map(
-        (i) =>
-          `• ${i.productName} ${i.productSize} x${i.quantity} - ${formatCurrency(i.subtotal)}`
-      )
-      .join("\n")
+    // ============================================================================
+    // REMITO: Mensaje SIN PRECIOS para repartidor
+    // ============================================================================
+    if (document.type === "REMITO") {
+      const firstName = document.client.name.split(' ')[0]
+      const productList = document.items
+        .map((item, index) => 
+          `${index + 1}. ${item.productName} ${item.productSize} (cantidad: ${item.quantity})`
+        )
+        .join("\n")
 
-    let message = `📋 *${typeLabel} N° ${String(document.number).padStart(5, "0")}*
-━━━━━━━━━━━━━━━━━━━━━
-¡Hola ${document.client.name}! 👋
+      const addressLine = document.client.address && document.client.city 
+        ? `${document.client.address}, ${document.client.city}` 
+        : document.client.city || "⚠️ COORDINAR DIRECCIÓN"
 
-${itemsList}
+      return `Hola! 👋
 
-💰 *Subtotal:* ${formatCurrency(document.subtotal)}`
+🚚 *REMITO N° ${String(document.number).padStart(5, "0")}*
 
+Tenemos una entrega para coordinar:
+
+📦 *PRODUCTOS:*
+${productList}
+
+👤 *CLIENTE:*
+${document.client.name}
+📞 ${document.client.phone}
+📍 ${addressLine}
+
+🚛 *${document.shippingType}*
+${document.observations ? `\n📝 *Obs:* ${document.observations}` : ""}
+
+_Remito generado por AZUL COLCHONES_`
+    }
+
+    // ============================================================================
+    // PRESUPUESTO y RECIBO: Mensaje profesional CON PRECIOS
+    // ============================================================================
+    const firstName = document.client.name.split(' ')[0]
+    const typeLabel = document.type === "PRESUPUESTO" ? "PRESUPUESTO" : "RECIBO"
+    
+    const productList = document.items
+      .map((item) => {
+        const stockBadge = item.source === "STOCK" ? " ✓" : ""
+        return `• ${item.productName} ${item.productSize}${stockBadge}\n  ${item.quantity} x ${formatCurrency(item.unitPrice)} = ${formatCurrency(item.subtotal)}`
+      })
+      .join("\n\n")
+
+    let message = `Hola ${firstName}! 😊\n\n`
+    message += `Te envío tu *${typeLabel} N° ${String(document.number).padStart(5, "0")}*\n\n`
+    message += `${productList}\n\n`
+    message += `━━━━━━━━━━━━━━━━━━━\n`
+
+    // Detalle de precios
     if (document.surcharge > 0) {
-      message += `\n📊 *Recargo (+${document.surchargeRate}%):* ${formatCurrency(document.surcharge)}`
+      message += `Subtotal: ${formatCurrency(document.subtotal)}\n`
+      message += `Recargo ${document.installments} cuotas: ${formatCurrency(document.surcharge)}\n`
+      message += `━━━━━━━━━━━━━━━━━━━\n`
     }
 
-    if (document.shippingCost > 0) {
-      message += `\n🚚 *Envío:* ${formatCurrency(document.shippingCost)}`
-    }
+    message += `💵 *TOTAL: ${formatCurrency(document.total)}*\n`
 
-    message += `\n\n💵 *TOTAL: ${formatCurrency(document.total)}*`
-
+    // ✅ INFORMACIÓN DE PAGO (solo RECIBO)
     if (document.type === "RECIBO") {
       if (document.amountPaid && document.amountPaid > 0) {
-        message += `\n✅ *Pagado (${document.paymentType || "Efectivo"}):* ${formatCurrency(document.amountPaid)}`
+        message += `\n✅ *Pagado (${document.paymentType || "Efectivo"}):* ${formatCurrency(document.amountPaid)}\n`
       }
-      
+
       if (document.balance && document.balance > 0) {
-        message += `\n⏳ *Saldo Pendiente:* ${formatCurrency(document.balance)}`
+        message += `⏳ *Saldo Pendiente:* ${formatCurrency(document.balance)}\n`
       } else if (document.amountPaid && document.amountPaid >= document.total) {
-        message += `\n\n🎉 *PAGO COMPLETO*`
+        message += `\n🎉 *PAGO COMPLETO*\n`
       }
 
       if (document.installments && document.installments > 1) {
         const installmentAmount = Math.round(document.total / document.installments)
-        message += `\n📅 *${document.installments} cuotas de ${formatCurrency(installmentAmount)}*`
+        message += `\n💳 *${document.installments} cuotas de ${formatCurrency(installmentAmount)}*\n`
       }
     }
 
+    message += `\n━━━━━━━━━━━━━━━━━━━\n`
+
+    // Información de entrega
     const hasCatalogo = document.items.some((i) => i.source === "CATALOGO")
+    const hasStock = document.items.some((i) => i.source === "STOCK")
 
-    message += `
-━━━━━━━━━━━━━━━━━━━━━
-📦 ${document.shippingType}`
-
-    if (hasCatalogo) {
-      message += `\n⏱️ Entrega estimada: 7-10 días`
+    if (hasStock && hasCatalogo) {
+      message += `📦 Productos en stock: Entrega inmediata\n`
+      message += `📦 Catálogo: 7-10 días hábiles\n`
+    } else if (hasCatalogo) {
+      message += `📦 Entrega estimada: 7-10 días hábiles\n`
+    } else {
+      message += `📦 Disponible para entrega inmediata\n`
     }
 
-    message += `
-✅ Garantía oficial PIERO
+    message += `🚚 ${document.shippingType}\n`
 
-*AZUL COLCHONES*
-📍 Balerdi 855, Villa María`
+    if (document.type === "PRESUPUESTO" && document.validUntil) {
+      const validDate = new Date(document.validUntil)
+      const daysValid = Math.ceil((validDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+      message += `⏱️ Válido por ${daysValid} días\n`
+    }
+
+    message += `\n✅ Garantía oficial PIERO\n`
+    message += `\nCualquier consulta, estoy a disposición! 👍\n\n`
+    message += `*AZUL COLCHONES*\n`
+    message += `📍 Balerdi 855, Villa María\n`
+    message += `📞 3534096566`
 
     return message
   }
@@ -318,6 +365,7 @@ ${itemsList}
   const StatusIcon = statusConfig[document.status].icon
   const hasStockItems = document.items.some((i) => i.source === "STOCK")
   const hasCatalogoItems = document.items.some((i) => i.source === "CATALOGO")
+  const isRemito = document.type === "REMITO"
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 p-4 pt-20 pb-24 md:p-8 md:pt-8 md:pb-8">
@@ -400,246 +448,346 @@ ${itemsList}
               <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 opacity-20 blur transition duration-500 group-hover:opacity-30 print:hidden"></div>
               <Card className="relative overflow-hidden border-0 bg-white/95 shadow-2xl shadow-blue-500/10 backdrop-blur-sm print:shadow-none">
                 <div className="absolute -right-16 -top-16 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/10 to-indigo-600/10 blur-3xl md:h-48 md:w-48 print:hidden"></div>
-                <CardContent className="relative p-4 md:p-8" ref={printRef} id="printable-document">
-                  {/* Header del documento */}
-                  <div className="mb-6 flex flex-col gap-4 border-b-2 border-slate-200 pb-4 sm:flex-row sm:justify-between md:mb-8 md:pb-6">
-                    <div className="flex-1">
-                      <div className="mb-2 flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-blue-600 md:h-6 md:w-6" />
-                        <h2 className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-xl font-bold text-transparent md:text-3xl print:text-blue-600 print:bg-none">
-                          AZUL COLCHONES
-                        </h2>
+                <CardContent className="relative p-6 md:p-10" ref={printRef} id="printable-document">
+                  {/* ✨ HEADER OPTIMIZADO */}
+                  <div className="mb-8 grid grid-cols-[1fr_auto] gap-6 border-b-2 border-blue-600 pb-6 print:border-blue-600">
+                    {/* Logo y datos empresa */}
+                    <div>
+                      <div className="mb-3 flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 shadow-lg print:shadow-md">
+                          <Sparkles className="h-7 w-7 text-white" />
+                        </div>
+                        <div>
+                          <h1 className="text-2xl font-black uppercase tracking-tight text-blue-900">
+                            Azul Colchones
+                          </h1>
+                          <p className="text-xs font-medium text-slate-600">
+                            Descanso de calidad desde 1989
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-xs font-medium text-slate-600 md:text-base">
-                        Balerdi 855 - Villa María, Córdoba
-                      </p>
-                      <p className="text-[10px] text-slate-500 md:text-sm">
-                        Tel: 03534096566 • info@azulcolchones.com
-                      </p>
+                      <div className="space-y-0.5 text-xs text-slate-700">
+                        <p className="font-semibold">📍 Balerdi 855, Villa María, Córdoba</p>
+                        <p>📞 03534 096566 • ✉️ info@azulcolchones.com</p>
+                      </div>
                     </div>
-                    <div className="text-left sm:text-right">
-                      <div className="mb-2 inline-block rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 px-3 py-1.5 md:px-4 md:py-2 print:bg-blue-50">
-                        <p className="text-xs font-bold text-blue-600 md:text-sm">
-                          {typeLabels[document.type].toUpperCase()}
+
+                    {/* Número de documento - MÁS DESTACADO */}
+                    <div className="flex flex-col items-end justify-between">
+                      <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 px-6 py-4 text-right shadow-xl print:shadow-md">
+                        <p className="mb-1 text-xs font-bold uppercase tracking-wider text-blue-200">
+                          {typeLabels[document.type]}
                         </p>
-                        <p className="text-2xl font-bold text-slate-900 md:text-3xl">
-                          N° {String(document.number).padStart(5, "0")}
+                        <p className="text-4xl font-black tabular-nums text-white">
+                          {String(document.number).padStart(5, "0")}
                         </p>
                       </div>
-                      <p className="mt-2 text-xs font-medium text-slate-600 md:text-sm">
+                      <p className="mt-2 text-sm font-semibold text-slate-600">
                         {formatDate(document.date)}
                       </p>
                     </div>
                   </div>
 
-                  {/* Cliente */}
-                  <div className="mb-6 overflow-hidden rounded-xl border border-slate-200/50 bg-gradient-to-br from-slate-50/80 to-blue-50/50 p-3.5 shadow-inner md:mb-8 md:p-5 print:bg-slate-50">
+                  {/* ✨ CLIENTE OPTIMIZADO */}
+                  <div className="mb-6 overflow-hidden rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50/80 to-indigo-50/50 p-4 shadow-sm print:border-blue-300 print:bg-blue-50">
                     <div className="mb-2 flex items-center gap-2">
-                      <div className="rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 p-1 shadow-md md:p-1.5 print:bg-blue-600">
-                        <User className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
+                      <div className="rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 p-1.5 shadow-md print:bg-blue-700">
+                        <User className="h-4 w-4 text-white" />
                       </div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 md:text-xs">Cliente</p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Cliente</p>
                     </div>
-                    <p className="mb-1 text-lg font-bold text-slate-900 md:text-xl">{document.client.name}</p>
-                    <div className="flex flex-col gap-0.5 text-xs text-slate-600 sm:flex-row sm:flex-wrap sm:gap-x-3 md:text-sm">
-                      <span className="font-medium">{document.client.phone}</span>
+                    <p className="mb-1 text-xl font-black text-slate-900">{document.client.name}</p>
+                    <div className="flex flex-col gap-0.5 text-sm text-slate-700">
+                      <span className="font-semibold">📞 {document.client.phone}</span>
                       {document.client.address && (
-                        <>
-                          <span className="hidden text-slate-400 sm:inline">•</span>
-                          <span className="truncate">{document.client.address}, {document.client.city}</span>
-                        </>
+                        <span className="font-medium">📍 {document.client.address}, {document.client.city}</span>
                       )}
                     </div>
                   </div>
 
-                  {/* Items Table */}
-                  <div className="mb-6 overflow-hidden rounded-xl border border-slate-200/50 md:mb-8">
-                    {/* Mobile: Card View */}
-                    <div className="divide-y divide-slate-100 md:hidden print:hidden">
-                      {document.items.map((item) => (
-                        <div key={item.id} className="space-y-2 p-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-semibold text-slate-900">{item.productName}</p>
-                              <p className="text-xs text-slate-500">{item.productSize}</p>
-                            </div>
-                            <Badge
-                              variant={item.source === "STOCK" ? "success" : "secondary"}
-                              className="flex-shrink-0 gap-1 text-[10px] font-semibold shadow-sm"
-                            >
-                              {item.source === "STOCK" ? (
-                                <Warehouse className="h-2.5 w-2.5" />
-                              ) : (
-                                <Truck className="h-2.5 w-2.5" />
-                              )}
-                              {item.source === "STOCK" ? "Stock" : "Catálogo"}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-3">
-                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-blue-100 text-xs font-bold text-blue-700">
-                                {item.quantity}
-                              </span>
-                              <span className="font-medium text-slate-700">{formatCurrency(item.unitPrice)}</span>
-                            </div>
-                            <span className="text-base font-bold text-slate-900">{formatCurrency(item.subtotal)}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Desktop: Table View */}
-                    <table className="hidden w-full md:table print:table">
+                  {/* ✨ TABLA PROFESIONAL OPTIMIZADA */}
+                  <div className="mb-6 overflow-hidden rounded-xl border-2 border-slate-200 shadow-sm print:border-slate-300">
+                    <table className="w-full">
                       <thead>
-                        <tr className="bg-gradient-to-r from-slate-50 to-blue-50/50 text-left text-xs font-bold uppercase tracking-wider text-slate-600 print:bg-slate-100">
-                          <th className="px-4 py-3">Producto</th>
-                          <th className="px-4 py-3 text-center">Cant.</th>
-                          <th className="px-4 py-3 text-right">Precio</th>
-                          <th className="px-4 py-3 text-right">Subtotal</th>
+                        <tr className="border-b-2 border-slate-300 bg-slate-100 print:bg-slate-100">
+                          <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-700">
+                            Producto
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-700">
+                            Cant.
+                          </th>
+                          {!isRemito && (
+                            <>
+                              <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-700">
+                                Precio Unit.
+                              </th>
+                              <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-700">
+                                Subtotal
+                              </th>
+                            </>
+                          )}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {document.items.map((item) => (
-                          <tr key={item.id} className="transition-colors hover:bg-slate-50/50 print:hover:bg-transparent">
+                      <tbody className="divide-y divide-slate-200">
+                        {document.items.map((item, index) => (
+                          <tr key={item.id} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                             <td className="px-4 py-4">
-                              <div className="flex flex-col gap-1.5">
+                              <div className="space-y-1.5">
+                                <p className="font-bold text-slate-900">
+                                  {item.productName}
+                                </p>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-semibold text-slate-900">{item.productName}</span>
-                                  <span className="text-sm text-slate-500">{item.productSize}</span>
+                                  <span className="text-sm font-medium text-slate-600">{item.productSize}</span>
+                                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold shadow-sm ${
+                                    item.source === "STOCK" 
+                                      ? "bg-emerald-100 text-emerald-800 print:bg-emerald-100" 
+                                      : "bg-blue-100 text-blue-800 print:bg-blue-100"
+                                  }`}>
+                                    {item.source === "STOCK" ? "✓ Stock" : "📦 Catálogo"}
+                                  </span>
                                 </div>
-                                <Badge
-                                  variant={item.source === "STOCK" ? "success" : "secondary"}
-                                  className="w-fit gap-1 text-xs font-semibold shadow-sm"
-                                >
-                                  {item.source === "STOCK" ? (
-                                    <Warehouse className="h-3 w-3" />
-                                  ) : (
-                                    <Truck className="h-3 w-3" />
-                                  )}
-                                  {item.source === "STOCK" ? "En Stock" : "Catálogo"}
-                                </Badge>
                               </div>
                             </td>
                             <td className="px-4 py-4 text-center">
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 font-bold text-blue-700 print:bg-blue-50">
+                              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-lg font-bold text-white shadow-sm print:bg-blue-700">
                                 {item.quantity}
                               </span>
                             </td>
-                            <td className="px-4 py-4 text-right font-medium text-slate-700">
-                              {formatCurrency(item.unitPrice)}
-                            </td>
-                            <td className="px-4 py-4 text-right text-lg font-bold text-slate-900">
-                              {formatCurrency(item.subtotal)}
-                            </td>
+                            {!isRemito && (
+                              <>
+                                <td className="px-4 py-4 text-right font-semibold tabular-nums text-slate-700">
+                                  {formatCurrency(item.unitPrice)}
+                                </td>
+                                <td className="px-4 py-4 text-right text-lg font-bold tabular-nums text-slate-900">
+                                  {formatCurrency(item.subtotal)}
+                                </td>
+                              </>
+                            )}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
 
-                  {/* Totales */}
-                  <div className="flex justify-end">
-                    <div className="w-full space-y-2.5 rounded-xl border border-slate-200/50 bg-gradient-to-br from-slate-50/50 to-blue-50/30 p-4 shadow-inner md:w-80 md:space-y-3 md:p-6 print:w-96 print:bg-slate-50">
-                      <div className="flex justify-between text-xs md:text-sm">
-                        <span className="font-medium text-slate-600">Subtotal</span>
-                        <span className="font-bold text-slate-900">{formatCurrency(document.subtotal)}</span>
-                      </div>
-                      {document.surcharge > 0 && (
-                        <div className="flex justify-between rounded-lg bg-orange-50 px-2.5 py-1.5 text-xs md:px-3 md:py-2 md:text-sm">
-                          <span className="font-medium text-orange-700">
-                            Recargo {document.installments} cuotas (+{document.surchargeRate}%)
+                  {/* ✨ TOTALES OPTIMIZADOS - Solo para PRESUPUESTO y RECIBO */}
+                  {!isRemito && (
+                    <div className="flex justify-end">
+                      <div className="w-full space-y-3 rounded-xl border-2 border-slate-200 bg-slate-50 p-5 shadow-sm md:w-96 print:w-96 print:border-slate-300 print:bg-slate-50">
+                        {/* Subtotal */}
+                        <div className="flex justify-between border-b border-slate-300 pb-2.5 text-sm">
+                          <span className="font-semibold text-slate-700">Subtotal</span>
+                          <span className="font-bold tabular-nums text-slate-900">
+                            {formatCurrency(document.subtotal)}
                           </span>
-                          <span className="font-bold text-orange-700">{formatCurrency(document.surcharge)}</span>
                         </div>
-                      )}
-                      {document.shippingCost > 0 && (
-                        <div className="flex justify-between text-xs md:text-sm">
-                          <span className="font-medium text-slate-600">Envío</span>
-                          <span className="font-bold text-slate-900">{formatCurrency(document.shippingCost)}</span>
-                        </div>
-                      )}
-                      <div className="my-2.5 h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent md:my-3"></div>
-                      <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 p-3 shadow-lg shadow-blue-500/30 md:p-4 print:bg-blue-600 print:shadow-none">
-                        <span className="text-xs font-bold text-white md:text-sm">TOTAL</span>
-                        <span className="text-2xl font-bold text-white drop-shadow-lg md:text-3xl">{formatCurrency(document.total)}</span>
-                      </div>
 
-                      {/* INFORMACIÓN DE PAGO */}
-                      {document.type === "RECIBO" && (
-                        <>
-                          {document.amountPaid !== undefined && document.amountPaid !== null && document.amountPaid > 0 && (
-                            <div className="flex justify-between rounded-lg bg-emerald-50 px-3 py-2 text-xs md:text-sm">
-                              <span className="font-medium text-emerald-700">
-                                ✅ Pagado ({document.paymentType || "Efectivo"})
-                              </span>
-                              <span className="font-bold text-emerald-700">{formatCurrency(document.amountPaid)}</span>
-                            </div>
-                          )}
-                          
-                          {document.balance !== undefined && document.balance !== null && document.balance > 0 && (
-                            <div className="flex justify-between rounded-lg bg-orange-50 px-3 py-2">
-                              <span className="font-bold text-orange-700">
-                                ⏳ Saldo Pendiente
-                              </span>
-                              <span className="text-xl font-bold text-orange-700">
-                                {formatCurrency(document.balance)}
-                              </span>
-                            </div>
-                          )}
-
-                          {(!document.amountPaid || document.amountPaid === 0) && (
-                            <div className="rounded-lg bg-blue-50 px-3 py-2 text-center">
-                              <p className="text-xs font-semibold text-blue-700">
-                                💼 A Cuenta - Sin pago registrado
-                              </p>
-                            </div>
-                          )}
-                        </>
-                      )}
-
-                      {document.installments && document.installments > 1 && (
-                        <p className="text-center text-xs font-semibold text-slate-600 md:text-sm">
-                          {document.installments} cuotas de {formatCurrency(Math.round(document.total / document.installments))}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="mt-6 rounded-xl border border-slate-200/50 bg-gradient-to-br from-slate-50/50 to-blue-50/30 p-4 md:mt-8 md:p-5 print:bg-slate-50">
-                    <div className="mb-3 flex flex-wrap gap-3 text-xs md:gap-4 md:text-sm">
-                      <div className="flex items-center gap-2 font-medium text-slate-700">
-                        <div className="rounded-lg bg-orange-100 p-1 md:p-1.5 print:bg-orange-200">
-                          <Truck className="h-3.5 w-3.5 md:h-4 md:w-4 text-orange-600" />
-                        </div>
-                        <span className="text-xs md:text-sm">{document.shippingType}</span>
-                      </div>
-                      {hasCatalogoItems && (
-                        <div className="flex items-center gap-2 font-medium text-slate-700">
-                          <div className="rounded-lg bg-blue-100 p-1 md:p-1.5 print:bg-blue-200">
-                            <Clock className="h-3.5 w-3.5 md:h-4 md:w-4 text-blue-600" />
+                        {/* Recargo si aplica */}
+                        {document.surcharge > 0 && (
+                          <div className="flex justify-between rounded-lg bg-orange-50 px-3 py-2 text-sm">
+                            <span className="font-semibold text-orange-800">
+                              Recargo {document.installments} cuotas (+{document.surchargeRate}%)
+                            </span>
+                            <span className="font-bold tabular-nums text-orange-900">
+                              {formatCurrency(document.surcharge)}
+                            </span>
                           </div>
-                          <span className="text-xs md:text-sm">Entrega: 7-10 días</span>
+                        )}
+
+                        {/* Costo de envío si aplica */}
+                        {document.shippingCost > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="font-semibold text-slate-700">Envío</span>
+                            <span className="font-bold tabular-nums text-slate-900">
+                              {formatCurrency(document.shippingCost)}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* TOTAL */}
+                        <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 p-4 shadow-lg print:bg-blue-700 print:shadow-md">
+                          <span className="text-sm font-bold uppercase tracking-wider text-white">
+                            Total
+                          </span>
+                          <span className="text-3xl font-black tabular-nums text-white">
+                            {formatCurrency(document.total)}
+                          </span>
                         </div>
-                      )}
-                      <div className="flex items-center gap-2 font-medium text-slate-700">
-                        <div className="rounded-lg bg-emerald-100 p-1 md:p-1.5 print:bg-emerald-200">
-                          <ShieldCheck className="h-3.5 w-3.5 md:h-4 md:w-4 text-emerald-600" />
-                        </div>
-                        <span className="text-xs md:text-sm">Garantía PIERO</span>
+
+                        {/* ✨ INFORMACIÓN DE PAGO DETALLADA - SOLO RECIBO */}
+                        {document.type === "RECIBO" && (
+                          <div className="space-y-2.5 border-t-2 border-slate-300 pt-3">
+                            {/* Monto Pagado */}
+                            {document.amountPaid !== undefined && document.amountPaid !== null && document.amountPaid > 0 && (
+                              <div className="rounded-lg bg-emerald-50 px-3 py-2.5 shadow-sm print:bg-emerald-50">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-bold text-emerald-800">
+                                    ✓ Entregó ({document.paymentType || "Efectivo"})
+                                  </span>
+                                  <span className="text-lg font-black tabular-nums text-emerald-900">
+                                    {formatCurrency(document.amountPaid)}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Saldo Pendiente - MUY DESTACADO */}
+                            {document.balance !== undefined && document.balance !== null && document.balance > 0 && (
+                              <div className="rounded-xl border-2 border-orange-500 bg-gradient-to-br from-orange-100 to-amber-100 p-4 shadow-md print:border-orange-600 print:bg-orange-100">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex-1">
+                                    <p className="mb-0.5 flex items-center gap-2 text-sm font-black uppercase text-orange-900">
+                                      <AlertTriangle className="h-5 w-5" />
+                                      Saldo Pendiente
+                                    </p>
+                                    <p className="text-xs font-semibold text-orange-800">
+                                      Debe abonar al entregar
+                                    </p>
+                                  </div>
+                                  <p className="text-4xl font-black tabular-nums text-orange-900">
+                                    {formatCurrency(document.balance)}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Pago Completo */}
+                            {document.balance !== undefined && document.balance === 0 && document.amountPaid && document.amountPaid > 0 && (
+                              <div className="rounded-xl border-2 border-emerald-500 bg-gradient-to-br from-emerald-100 to-green-100 p-4 text-center shadow-md print:border-emerald-600 print:bg-emerald-100">
+                                <CheckCircle className="mx-auto mb-2 h-12 w-12 text-emerald-600" />
+                                <p className="text-lg font-black uppercase text-emerald-900">
+                                  Pago Completo
+                                </p>
+                                <p className="text-xs font-semibold text-emerald-800">
+                                  Sin saldo pendiente
+                                </p>
+                              </div>
+                            )}
+
+                            {/* A Cuenta */}
+                            {(!document.amountPaid || document.amountPaid === 0) && (
+                              <div className="rounded-xl border-2 border-blue-400 bg-gradient-to-br from-blue-100 to-cyan-100 p-3 shadow-sm print:border-blue-500 print:bg-blue-100">
+                                <div className="flex items-center gap-2.5">
+                                  <Receipt className="h-6 w-6 text-blue-700" />
+                                  <div>
+                                    <p className="text-sm font-bold text-blue-900">
+                                      A Cuenta
+                                    </p>
+                                    <p className="text-xs font-semibold text-blue-700">
+                                      Sin pago registrado - Total adeudado: {formatCurrency(document.total)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Plan de cuotas */}
+                            {document.installments && document.installments > 1 && (
+                              <div className="rounded-lg bg-blue-50 px-3 py-2 text-center shadow-sm print:bg-blue-50">
+                                <p className="text-sm font-bold text-blue-900">
+                                  💳 {document.installments} cuotas de {formatCurrency(Math.round(document.total / document.installments))}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
+                  )}
+
+                  {/* ✨ FOOTER PROFESIONAL */}
+                  <div className="mt-8 space-y-4 rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50 to-blue-50/30 p-5 shadow-sm print:border-slate-300 print:bg-slate-50">
+                    {/* Info de entrega */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="flex items-start gap-2.5 rounded-lg bg-white/80 p-3 shadow-sm print:bg-white">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-orange-100 print:bg-orange-200">
+                          <Truck className="h-5 w-5 text-orange-700" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold uppercase text-slate-500">Envío</p>
+                          <p className="text-sm font-semibold leading-tight text-slate-900">{document.shippingType}</p>
+                        </div>
+                      </div>
+
+                      {hasCatalogoItems && (
+                        <div className="flex items-start gap-2.5 rounded-lg bg-white/80 p-3 shadow-sm print:bg-white">
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 print:bg-blue-200">
+                            <Clock className="h-5 w-5 text-blue-700" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold uppercase text-slate-500">Entrega</p>
+                            <p className="text-sm font-semibold leading-tight text-slate-900">7-10 días</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-start gap-2.5 rounded-lg bg-white/80 p-3 shadow-sm print:bg-white">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-100 print:bg-emerald-200">
+                          <ShieldCheck className="h-5 w-5 text-emerald-700" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold uppercase text-slate-500">Garantía</p>
+                          <p className="text-sm font-semibold leading-tight text-slate-900">Oficial PIERO</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Observaciones si las hay */}
                     {document.observations && (
-                      <div className="mt-3 rounded-lg bg-white/60 p-2.5 backdrop-blur-sm md:p-3 print:bg-white">
-                        <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                      <div className="rounded-lg border-l-4 border-blue-600 bg-white p-4 shadow-sm print:bg-white">
+                        <p className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">
                           Observaciones
                         </p>
-                        <p className="text-xs leading-relaxed text-slate-700 md:text-sm">
+                        <p className="text-sm leading-relaxed text-slate-700">
                           {document.observations}
                         </p>
                       </div>
                     )}
                   </div>
+
+                  {/* ✅ ESPACIO PARA FIRMAS - SOLO REMITO - SOLO IMPRESIÓN */}
+                  {isRemito && (
+                    <div className="mt-12 hidden border-t-2 border-slate-400 pt-8 print:block">
+                      <div className="grid grid-cols-2 gap-12">
+                        {/* Firma del Cliente */}
+                        <div>
+                          <div className="mb-16">
+                            <p className="mb-2 text-sm font-semibold text-slate-700">
+                              Recibí conforme
+                            </p>
+                          </div>
+                          <div className="border-b-2 border-slate-500"></div>
+                          <div className="mt-2 space-y-1">
+                            <p className="text-xs font-semibold text-slate-600">Firma del Cliente</p>
+                            <p className="text-xs text-slate-500">Aclaración: _______________________</p>
+                            <p className="text-xs text-slate-500">DNI: _______________________</p>
+                          </div>
+                        </div>
+
+                        {/* Firma de AZUL COLCHONES */}
+                        <div>
+                          <div className="mb-16">
+                            <p className="mb-2 text-sm font-semibold text-slate-700">
+                              Entregado por
+                            </p>
+                          </div>
+                          <div className="border-b-2 border-slate-500"></div>
+                          <div className="mt-2 space-y-1">
+                            <p className="text-xs font-semibold text-slate-600">AZUL COLCHONES</p>
+                            <p className="text-xs text-slate-500">Aclaración: _______________________</p>
+                            <p className="text-xs text-slate-500">Fecha: ____/____/________</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Nota Legal */}
+                      <div className="mt-8 border-t border-slate-300 pt-4">
+                        <p className="text-center text-xs leading-relaxed text-slate-600">
+                          Este remito constituye comprobante de entrega de la mercadería detallada. 
+                          El cliente declara haber recibido los productos en perfectas condiciones.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -940,17 +1088,11 @@ ${itemsList}
         }
         
         @media print {
-          /* ========================================
-             CONFIGURACIÓN DE PÁGINA
-             ======================================== */
           @page {
             margin: 1cm;
             size: A4 portrait;
           }
           
-          /* ========================================
-             FORZAR COLORES
-             ======================================== */
           html {
             print-color-adjust: exact !important;
             -webkit-print-color-adjust: exact !important;
@@ -961,9 +1103,6 @@ ${itemsList}
             -webkit-print-color-adjust: exact !important;
           }
           
-          /* ========================================
-             RESETEAR BODY Y HTML
-             ======================================== */
           html,
           body {
             width: 100% !important;
@@ -974,35 +1113,23 @@ ${itemsList}
             overflow: visible !important;
           }
           
-          /* ========================================
-             OCULTAR NAVEGACIÓN Y ELEMENTOS NO DESEADOS
-             ======================================== */
-          
-          /* Ocultar header de navegación */
           header,
           nav,
           [role="navigation"] {
             display: none !important;
           }
           
-          /* Ocultar todos los botones */
           button,
           a[role="button"],
           .print\\:hidden {
             display: none !important;
           }
           
-          /* Ocultar sidebar/columnas laterales */
           aside,
           .lg\\:grid-cols-3 > div:last-child {
             display: none !important;
           }
           
-          /* ========================================
-             MOSTRAR SOLO EL CONTENIDO DEL DOCUMENTO
-             ======================================== */
-          
-          /* Contenedor principal */
           main {
             display: block !important;
             width: 100% !important;
@@ -1012,7 +1139,6 @@ ${itemsList}
             background: white !important;
           }
           
-          /* Grid layout → stack vertical */
           .lg\\:grid-cols-3,
           .md\\:grid {
             display: block !important;
@@ -1023,18 +1149,12 @@ ${itemsList}
             grid-column: auto !important;
           }
           
-          /* Contenedores con max-width */
           .max-w-7xl,
           .max-w-6xl {
             max-width: 100% !important;
             width: 100% !important;
           }
           
-          /* ========================================
-             CARDS Y CONTENEDORES
-             ======================================== */
-          
-          /* Eliminar sombras y efectos */
           .shadow-2xl,
           .shadow-xl,
           .shadow-lg,
@@ -1049,59 +1169,23 @@ ${itemsList}
             backdrop-filter: none !important;
           }
           
-          /* Simplificar bordes */
           .rounded-2xl,
           .rounded-xl {
-            border-radius: 0 !important;
+            border-radius: 8px !important;
           }
           
-          /* Borders visibles */
-          .border,
-          .border-2 {
-            border: 1px solid #e2e8f0 !important;
-          }
-          
-          /* ========================================
-             GRADIENTES → COLORES SÓLIDOS
-             ======================================== */
-          
-          /* Fondos con gradiente */
           .bg-gradient-to-br,
           .bg-gradient-to-r,
           .bg-gradient-to-l {
             background: white !important;
           }
           
-          /* Texto con gradiente */
           .bg-clip-text {
             background: none !important;
             -webkit-background-clip: initial !important;
             -webkit-text-fill-color: currentColor !important;
             color: #1e40af !important;
           }
-          
-          /* Headers con gradientes específicos */
-          .from-slate-50,
-          .to-blue-50 {
-            background: #f8fafc !important;
-          }
-          
-          /* Totales con gradiente azul */
-          .from-blue-500.to-indigo-600,
-          [class*="from-blue"][class*="to-indigo"] {
-            background: #3b82f6 !important;
-            color: white !important;
-          }
-          
-          .from-emerald-500.to-green-600,
-          [class*="from-emerald"][class*="to-green"] {
-            background: #10b981 !important;
-            color: white !important;
-          }
-          
-          /* ========================================
-             TABLAS
-             ======================================== */
           
           table {
             width: 100% !important;
@@ -1122,68 +1206,6 @@ ${itemsList}
             page-break-after: auto !important;
           }
           
-          th,
-          td {
-            border: 1px solid #e2e8f0 !important;
-            padding: 8px !important;
-          }
-          
-          th {
-            background: #f1f5f9 !important;
-            font-weight: 600 !important;
-          }
-          
-          /* ========================================
-             BADGES Y ELEMENTOS DECORATIVOS
-             ======================================== */
-          
-          .bg-blue-100 {
-            background: #dbeafe !important;
-            color: #1e40af !important;
-            border: 1px solid #3b82f6 !important;
-          }
-          
-          .bg-emerald-100 {
-            background: #d1fae5 !important;
-            color: #065f46 !important;
-            border: 1px solid #10b981 !important;
-          }
-          
-          .bg-orange-100 {
-            background: #ffedd5 !important;
-            color: #9a3412 !important;
-            border: 1px solid #f97316 !important;
-          }
-          
-          .bg-amber-100 {
-            background: #fef3c7 !important;
-            color: #92400e !important;
-            border: 1px solid #f59e0b !important;
-          }
-          
-          /* ========================================
-             INFORMACIÓN DE PAGO (RECIBOS)
-             ======================================== */
-          
-          .bg-emerald-50 {
-            background: #f0fdf4 !important;
-            border: 2px solid #10b981 !important;
-          }
-          
-          .bg-orange-50 {
-            background: #fff7ed !important;
-            border: 2px solid #f97316 !important;
-          }
-          
-          .bg-blue-50 {
-            background: #eff6ff !important;
-            border: 2px solid #3b82f6 !important;
-          }
-          
-          /* ========================================
-             EVITAR SALTOS DE PÁGINA
-             ======================================== */
-          
           .border-slate-200,
           .border-slate-100,
           .space-y-4 > *,
@@ -1195,72 +1217,9 @@ ${itemsList}
             page-break-after: avoid !important;
           }
           
-          /* ========================================
-             TAMAÑOS DE FUENTE LEGIBLES
-             ======================================== */
-          
-          .text-xs {
-            font-size: 10pt !important;
-          }
-          
-          .text-sm {
-            font-size: 11pt !important;
-          }
-          
-          .text-base {
-            font-size: 12pt !important;
-          }
-          
-          .text-lg {
-            font-size: 14pt !important;
-          }
-          
-          .text-xl {
-            font-size: 16pt !important;
-          }
-          
-          .text-2xl {
-            font-size: 18pt !important;
-          }
-          
-          .text-3xl {
-            font-size: 22pt !important;
-          }
-          
-          /* ========================================
-             ICONOS (SVG)
-             ======================================== */
-          
           svg {
             display: inline-block !important;
             vertical-align: middle !important;
-          }
-          
-          /* ========================================
-             ESPACIADO
-             ======================================== */
-          
-          .p-4,
-          .p-6,
-          .p-8 {
-            padding: 12pt !important;
-          }
-          
-          .mb-6,
-          .mb-8 {
-            margin-bottom: 12pt !important;
-          }
-          
-          .space-y-2 > * + * {
-            margin-top: 4pt !important;
-          }
-          
-          .space-y-4 > * + * {
-            margin-top: 8pt !important;
-          }
-          
-          .space-y-6 > * + * {
-            margin-top: 12pt !important;
           }
         }
       `}</style>

@@ -559,32 +559,49 @@ function NuevoDocumentoContent() {
           console.error("Error al actualizar estado:", error)
         }
 
+        // ============================================================================
+        // REMITO: Mensaje SIN PRECIOS para repartidor
+        // ============================================================================
         if (type === "REMITO") {
           const productList = items
             .map((item, index) => 
-              `${index + 1}. ${item.productName} ${item.productSize ? `- ${item.productSize}` : ""} x${item.quantity}`
+              `${index + 1}. ${item.productName} ${item.productSize} (cantidad: ${item.quantity})`
             )
             .join("\n")
-        
-          // ✅ MEJORADO: Manejo inteligente de dirección
+
           const addressLine = client.address && client.city 
             ? `${client.address}, ${client.city}` 
-            : client.city || "⚠️ COORDINAR DIRECCIÓN CON CLIENTE"
-        
-          const deliveryMessage = 
-            `🚚 *REMITO #${String(document.number).padStart(5, "0")}*\n\n` +
-            `*Cliente:* ${client.name}\n` +
-            `*Teléfono:* ${client.phone}\n` +
-            `*Dirección:* ${addressLine}\n\n` +
-            `*PRODUCTOS A ENTREGAR:*\n${productList}\n\n` +
-            `${shippingType ? `*Envío:* ${shippingType}\n` : ""}` +
-            `${observations ? `\n*Obs:* ${observations}` : ""}`
-        
+            : client.city || "⚠️ COORDINAR DIRECCIÓN"
+
+          const deliveryMessage = `Hola! 👋
+
+🚚 *REMITO N° ${String(document.number).padStart(5, "0")}*
+
+Tenemos una entrega para coordinar:
+
+📦 *PRODUCTOS:*
+${productList}
+
+👤 *CLIENTE:*
+${client.name}
+📞 ${client.phone}
+📍 ${addressLine}
+
+🚛 *${shippingType}*
+${observations ? `\n📝 *Obs:* ${observations}` : ""}
+
+_Remito generado por AZUL COLCHONES_`
+
           const deliveryWhatsappUrl = `https://wa.me/${DELIVERY_WHATSAPP}?text=${encodeURIComponent(deliveryMessage)}`
           window.open(deliveryWhatsappUrl, "_blank")
           toast.success("Remito enviado al repartidor")
         } else {
-          // ✅ MENSAJE PROFESIONAL CON INFO DE PAGO
+          // ============================================================================
+          // PRESUPUESTO y RECIBO: Mensaje profesional CON PRECIOS
+          // ============================================================================
+          const firstName = client.name.split(' ')[0]
+          const docType = type === "PRESUPUESTO" ? "PRESUPUESTO" : "RECIBO"
+
           const productList = items
             .map((item) => {
               const stockBadge = item.source === "STOCK" ? " ✓" : ""
@@ -592,50 +609,46 @@ function NuevoDocumentoContent() {
             })
             .join("\n\n")
 
-          const docType = type === "PRESUPUESTO" ? "PRESUPUESTO" : "RECIBO"
-          
-          let message = `Hola *${client.name}*\n\n`
-          message += `Te envío tu *${docType} #${String(document.number).padStart(5, "0")}*\n`
-          message += `━━━━━━━━━━━━━━━━━━━━━\n\n`
+          let message = `Hola ${firstName}! 😊\n\n`
+          message += `Te envío tu *${docType} N° ${String(document.number).padStart(5, "0")}*\n\n`
           message += `${productList}\n\n`
-          message += `━━━━━━━━━━━━━━━━━━━━━\n`
-          
+          message += `━━━━━━━━━━━━━━━━━━━\n`
+
           // Detalle de precios
           if (surcharge > 0) {
             message += `Subtotal: ${formatCurrency(subtotal)}\n`
             message += `Recargo ${installmentsNumber} cuotas: ${formatCurrency(surcharge)}\n`
-            message += `━━━━━━━━━━━━━━━━━━━━━\n`
+            message += `━━━━━━━━━━━━━━━━━━━\n`
           }
-          
-          message += `*TOTAL: ${formatCurrency(total)}*\n`
 
-          // ✅ INFORMACIÓN DE PAGO
+          message += `💵 *TOTAL: ${formatCurrency(total)}*\n`
+
+          // ✅ INFORMACIÓN DE PAGO (solo RECIBO)
           if (type === "RECIBO") {
             if (amountPaid > 0) {
               message += `\n✅ *Pagado (${paymentType}):* ${formatCurrency(amountPaid)}\n`
             }
-            
+
             if (balance > 0) {
               message += `⏳ *Saldo Pendiente:* ${formatCurrency(balance)}\n`
             } else if (amountPaid >= total && total > 0) {
               message += `\n🎉 *PAGO COMPLETO*\n`
             }
 
-            // Plan de cuotas
             if (installmentsNumber > 1) {
               message += `\n💳 *${installmentsNumber} cuotas de ${formatCurrency(installmentAmount)}*\n`
             }
           }
 
-          message += `\n`
+          message += `\n━━━━━━━━━━━━━━━━━━━\n`
 
           // Información de entrega
           const hasCatalogo = items.some(i => i.source === "CATALOGO")
           const hasStock = items.some(i => i.source === "STOCK")
-          
+
           if (hasStock && hasCatalogo) {
-            message += `📦 Entrega: Productos en stock inmediatos\n`
-            message += `   Catálogo en 7-10 días hábiles\n`
+            message += `📦 Productos en stock: Entrega inmediata\n`
+            message += `📦 Catálogo: 7-10 días hábiles\n`
           } else if (hasCatalogo) {
             message += `📦 Entrega estimada: 7-10 días hábiles\n`
           } else {
@@ -643,20 +656,20 @@ function NuevoDocumentoContent() {
           }
 
           message += `🚚 ${shippingType}\n`
-          
+
           if (type === "PRESUPUESTO" && validDays) {
             message += `⏱️ Válido por ${validDays} días\n`
           }
 
-          message += `\n`
-          message += `Cualquier consulta, estoy a disposición.\n\n`
+          message += `\n✅ Garantía oficial PIERO\n`
+          message += `\nCualquier consulta, estoy a disposición! 👍\n\n`
           message += `*AZUL COLCHONES*\n`
-          message += `Balerdi 855, Villa María\n`
-          message += `Garantía oficial PIERO`
+          message += `📍 Balerdi 855, Villa María\n`
+          message += `📞 3534096566`
 
           const clientPhone = client.phone.replace(/\D/g, "")
           const whatsappUrl = `https://wa.me/${clientPhone}?text=${encodeURIComponent(message)}`
-          
+
           window.open(whatsappUrl, "_blank")
           toast.success(type === "PRESUPUESTO" ? "Presupuesto enviado" : "Recibo enviado")
         }
