@@ -565,17 +565,21 @@ function NuevoDocumentoContent() {
               `${index + 1}. ${item.productName} ${item.productSize ? `- ${item.productSize}` : ""} x${item.quantity}`
             )
             .join("\n")
-
+        
+          // ✅ MEJORADO: Manejo inteligente de dirección
+          const addressLine = client.address && client.city 
+            ? `${client.address}, ${client.city}` 
+            : client.city || "⚠️ COORDINAR DIRECCIÓN CON CLIENTE"
+        
           const deliveryMessage = 
             `🚚 *REMITO #${String(document.number).padStart(5, "0")}*\n\n` +
             `*Cliente:* ${client.name}\n` +
             `*Teléfono:* ${client.phone}\n` +
-            `*Dirección:* ${client.address || "A coordinar"}\n` +
-            `*Ciudad:* ${client.city}\n\n` +
+            `*Dirección:* ${addressLine}\n\n` +
             `*PRODUCTOS A ENTREGAR:*\n${productList}\n\n` +
             `${shippingType ? `*Envío:* ${shippingType}\n` : ""}` +
             `${observations ? `\n*Obs:* ${observations}` : ""}`
-
+        
           const deliveryWhatsappUrl = `https://wa.me/${DELIVERY_WHATSAPP}?text=${encodeURIComponent(deliveryMessage)}`
           window.open(deliveryWhatsappUrl, "_blank")
           toast.success("Remito enviado al repartidor")

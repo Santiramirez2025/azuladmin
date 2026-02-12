@@ -940,42 +940,327 @@ ${itemsList}
         }
         
         @media print {
+          /* ========================================
+             CONFIGURACIÓN DE PÁGINA
+             ======================================== */
           @page {
-            margin: 1.5cm;
-            size: A4;
+            margin: 1cm;
+            size: A4 portrait;
           }
           
+          /* ========================================
+             FORZAR COLORES
+             ======================================== */
+          html {
+            print-color-adjust: exact !important;
+            -webkit-print-color-adjust: exact !important;
+          }
+          
+          * {
+            print-color-adjust: exact !important;
+            -webkit-print-color-adjust: exact !important;
+          }
+          
+          /* ========================================
+             RESETEAR BODY Y HTML
+             ======================================== */
+          html,
           body {
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
+            width: 100% !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+            overflow: visible !important;
           }
           
-          body * {
-            visibility: hidden;
+          /* ========================================
+             OCULTAR NAVEGACIÓN Y ELEMENTOS NO DESEADOS
+             ======================================== */
+          
+          /* Ocultar header de navegación */
+          header,
+          nav,
+          [role="navigation"] {
+            display: none !important;
           }
           
-          #printable-document,
-          #printable-document * {
-            visibility: visible;
+          /* Ocultar todos los botones */
+          button,
+          a[role="button"],
+          .print\\:hidden {
+            display: none !important;
           }
           
-          #printable-document {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            background: white;
+          /* Ocultar sidebar/columnas laterales */
+          aside,
+          .lg\\:grid-cols-3 > div:last-child {
+            display: none !important;
           }
           
+          /* ========================================
+             MOSTRAR SOLO EL CONTENIDO DEL DOCUMENTO
+             ======================================== */
+          
+          /* Contenedor principal */
+          main {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+          
+          /* Grid layout → stack vertical */
+          .lg\\:grid-cols-3,
+          .md\\:grid {
+            display: block !important;
+            grid-template-columns: none !important;
+          }
+          
+          .lg\\:col-span-2 {
+            grid-column: auto !important;
+          }
+          
+          /* Contenedores con max-width */
+          .max-w-7xl,
+          .max-w-6xl {
+            max-width: 100% !important;
+            width: 100% !important;
+          }
+          
+          /* ========================================
+             CARDS Y CONTENEDORES
+             ======================================== */
+          
+          /* Eliminar sombras y efectos */
+          .shadow-2xl,
+          .shadow-xl,
+          .shadow-lg,
+          .shadow-md,
+          .shadow-sm,
+          .shadow {
+            box-shadow: none !important;
+          }
+          
+          .backdrop-blur-sm,
+          .backdrop-blur {
+            backdrop-filter: none !important;
+          }
+          
+          /* Simplificar bordes */
+          .rounded-2xl,
+          .rounded-xl {
+            border-radius: 0 !important;
+          }
+          
+          /* Borders visibles */
+          .border,
+          .border-2 {
+            border: 1px solid #e2e8f0 !important;
+          }
+          
+          /* ========================================
+             GRADIENTES → COLORES SÓLIDOS
+             ======================================== */
+          
+          /* Fondos con gradiente */
+          .bg-gradient-to-br,
           .bg-gradient-to-r,
-          .bg-gradient-to-br {
-            background: #3b82f6 !important;
+          .bg-gradient-to-l {
+            background: white !important;
           }
           
-          table,
+          /* Texto con gradiente */
+          .bg-clip-text {
+            background: none !important;
+            -webkit-background-clip: initial !important;
+            -webkit-text-fill-color: currentColor !important;
+            color: #1e40af !important;
+          }
+          
+          /* Headers con gradientes específicos */
+          .from-slate-50,
+          .to-blue-50 {
+            background: #f8fafc !important;
+          }
+          
+          /* Totales con gradiente azul */
+          .from-blue-500.to-indigo-600,
+          [class*="from-blue"][class*="to-indigo"] {
+            background: #3b82f6 !important;
+            color: white !important;
+          }
+          
+          .from-emerald-500.to-green-600,
+          [class*="from-emerald"][class*="to-green"] {
+            background: #10b981 !important;
+            color: white !important;
+          }
+          
+          /* ========================================
+             TABLAS
+             ======================================== */
+          
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            page-break-inside: auto !important;
+          }
+          
+          thead {
+            display: table-header-group !important;
+          }
+          
+          tbody {
+            display: table-row-group !important;
+          }
+          
+          tr {
+            page-break-inside: avoid !important;
+            page-break-after: auto !important;
+          }
+          
           th,
           td {
-            border-color: #e2e8f0 !important;
+            border: 1px solid #e2e8f0 !important;
+            padding: 8px !important;
+          }
+          
+          th {
+            background: #f1f5f9 !important;
+            font-weight: 600 !important;
+          }
+          
+          /* ========================================
+             BADGES Y ELEMENTOS DECORATIVOS
+             ======================================== */
+          
+          .bg-blue-100 {
+            background: #dbeafe !important;
+            color: #1e40af !important;
+            border: 1px solid #3b82f6 !important;
+          }
+          
+          .bg-emerald-100 {
+            background: #d1fae5 !important;
+            color: #065f46 !important;
+            border: 1px solid #10b981 !important;
+          }
+          
+          .bg-orange-100 {
+            background: #ffedd5 !important;
+            color: #9a3412 !important;
+            border: 1px solid #f97316 !important;
+          }
+          
+          .bg-amber-100 {
+            background: #fef3c7 !important;
+            color: #92400e !important;
+            border: 1px solid #f59e0b !important;
+          }
+          
+          /* ========================================
+             INFORMACIÓN DE PAGO (RECIBOS)
+             ======================================== */
+          
+          .bg-emerald-50 {
+            background: #f0fdf4 !important;
+            border: 2px solid #10b981 !important;
+          }
+          
+          .bg-orange-50 {
+            background: #fff7ed !important;
+            border: 2px solid #f97316 !important;
+          }
+          
+          .bg-blue-50 {
+            background: #eff6ff !important;
+            border: 2px solid #3b82f6 !important;
+          }
+          
+          /* ========================================
+             EVITAR SALTOS DE PÁGINA
+             ======================================== */
+          
+          .border-slate-200,
+          .border-slate-100,
+          .space-y-4 > *,
+          .space-y-6 > * {
+            page-break-inside: avoid !important;
+          }
+          
+          h1, h2, h3, h4, h5, h6 {
+            page-break-after: avoid !important;
+          }
+          
+          /* ========================================
+             TAMAÑOS DE FUENTE LEGIBLES
+             ======================================== */
+          
+          .text-xs {
+            font-size: 10pt !important;
+          }
+          
+          .text-sm {
+            font-size: 11pt !important;
+          }
+          
+          .text-base {
+            font-size: 12pt !important;
+          }
+          
+          .text-lg {
+            font-size: 14pt !important;
+          }
+          
+          .text-xl {
+            font-size: 16pt !important;
+          }
+          
+          .text-2xl {
+            font-size: 18pt !important;
+          }
+          
+          .text-3xl {
+            font-size: 22pt !important;
+          }
+          
+          /* ========================================
+             ICONOS (SVG)
+             ======================================== */
+          
+          svg {
+            display: inline-block !important;
+            vertical-align: middle !important;
+          }
+          
+          /* ========================================
+             ESPACIADO
+             ======================================== */
+          
+          .p-4,
+          .p-6,
+          .p-8 {
+            padding: 12pt !important;
+          }
+          
+          .mb-6,
+          .mb-8 {
+            margin-bottom: 12pt !important;
+          }
+          
+          .space-y-2 > * + * {
+            margin-top: 4pt !important;
+          }
+          
+          .space-y-4 > * + * {
+            margin-top: 8pt !important;
+          }
+          
+          .space-y-6 > * + * {
+            margin-top: 12pt !important;
           }
         }
       `}</style>
