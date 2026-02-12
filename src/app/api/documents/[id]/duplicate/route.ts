@@ -3,14 +3,14 @@ import { prisma } from "@/lib/prisma"
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }  // ← Cambiado a Promise
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params  // ← Agregado await
+    const { id } = await params
 
     // Obtener documento original con items
     const original = await prisma.document.findUnique({
-      where: { id },  // ← Usar id directamente
+      where: { id },
       include: {
         items: true,
       },
@@ -44,8 +44,8 @@ export async function POST(
             ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // +7 días
             : null,
         
-        // Pago
-        paymentMethod: original.paymentMethod,
+        // Pago - CORREGIDO: paymentType en lugar de paymentMethod
+        paymentType: original.paymentType,
         installments: original.installments,
         
         // Envío
