@@ -80,7 +80,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { formatCurrency, formatDate, cn } from "@/lib/utils"
+import { formatCurrency, formatDate, cn } from "@/lib/utils-client"
 import type { DocumentType, DocumentStatus } from "@/types"
 import { Checkbox } from "@/components/ui/checkbox"
 

@@ -60,7 +60,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Skeleton } from "@/components/ui/skeleton"
-import { formatCurrency, generateWhatsAppLink, cn } from "@/lib/utils"
+import { formatCurrency, generateWhatsAppLink, cn } from "@/lib/utils-client"
 import type { Client } from "@/types"
 
 interface ClientWithStats extends Client {

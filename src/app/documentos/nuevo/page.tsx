@@ -51,7 +51,7 @@ import {
 } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
-import { cn, formatCurrency } from "@/lib/utils"
+import { cn, formatCurrency } from "@/lib/utils-client"
 import { ProductSelector, type DocumentItem } from "@/components/product-selector"
 import { usePaymentRates } from "@/hooks/use-payment-rates"
 

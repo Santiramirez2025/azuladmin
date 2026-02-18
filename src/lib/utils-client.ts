@@ -1,38 +1,35 @@
-// lib/utils.ts
-// ⚠️ ESTE ARCHIVO ES SOLO PARA SERVER COMPONENTS
-// TODO: Descomentar "server-only" después de actualizar todos los imports en client components
-// import "server-only"
+// lib/utils-client.ts
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { Decimal } from "@prisma/client/runtime/library"
 
 // ============================================================================
-// RE-EXPORTAR UTILS DE CLIENTE (para conveniencia)
+// TAILWIND CLASS MERGER
 // ============================================================================
-export * from "./utils-client"
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
 
 // ============================================================================
-// UTILS SOLO PARA SERVIDOR (usan Decimal de Prisma)
+// FORMATEO DE MONEDA (SIN DECIMAL DE PRISMA)
 // ============================================================================
 
 /**
- * Formatea un número como moneda argentina (ARS) - VERSION SERVIDOR
- * Soporta Decimal de Prisma
+ * Formatea un número como moneda argentina (ARS)
+ * @param amount - Monto a formatear (solo number)
+ * @param showDecimals - Mostrar decimales (default: false)
  */
-export function formatCurrencyServer(
-  amount: number | Decimal | null | undefined,
+export function formatCurrency(
+  amount: number | null | undefined,
   showDecimals = false
 ): string {
   if (amount === null || amount === undefined) return "$0"
-  
-  const numAmount = typeof amount === "number" ? amount : Number(amount)
   
   return new Intl.NumberFormat("es-AR", {
     style: "currency",
     currency: "ARS",
     minimumFractionDigits: showDecimals ? 2 : 0,
     maximumFractionDigits: showDecimals ? 2 : 0,
-  }).format(numAmount)
+  }).format(amount)
 }
 
 /**
@@ -41,9 +38,9 @@ export function formatCurrencyServer(
  */
 export function parseCurrency(value: string): number {
   const cleaned = value
-    .replace(/[^\d,.-]/g, "") // Remover todo excepto números, comas y puntos
-    .replace(/\./g, "")       // Remover puntos de miles
-    .replace(",", ".")        // Convertir coma decimal a punto
+    .replace(/[^\d,.-]/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".")
   
   return parseFloat(cleaned) || 0
 }
@@ -117,7 +114,6 @@ export function formatPhone(phone: string | null | undefined): string {
   
   const cleaned = phone.replace(/\D/g, "")
   
-  // Formato internacional argentino
   if (cleaned.startsWith("549")) {
     const areaCode = cleaned.slice(3, 6)
     const firstPart = cleaned.slice(6, 9)
@@ -125,7 +121,6 @@ export function formatPhone(phone: string | null | undefined): string {
     return `+54 9 ${areaCode} ${firstPart}-${secondPart}`
   }
   
-  // Formato local (sin +54 9)
   if (cleaned.length === 10) {
     const areaCode = cleaned.slice(0, 3)
     const firstPart = cleaned.slice(3, 6)
@@ -142,9 +137,7 @@ export function formatPhone(phone: string | null | undefined): string {
 export function formatPhoneForWhatsApp(phone: string): string {
   const cleaned = phone.replace(/\D/g, "")
   
-  // Si no empieza con 549, agregarlo
   if (!cleaned.startsWith("549")) {
-    // Asumir que es local argentino y agregar 549
     return `549${cleaned}`
   }
   
@@ -157,12 +150,9 @@ export function formatPhoneForWhatsApp(phone: string): string {
 
 /**
  * Calcula precio con recargo por cuotas
- * @param basePrice - Precio base
- * @param installments - Número de cuotas (1, 3, 6, 9, 12)
- * @returns Objeto con total, monto por cuota y tasa de recargo
  */
 export function calculateInstallmentPrice(
-  basePrice: number | Decimal,
+  basePrice: number,
   installments: number
 ): {
   total: number
@@ -170,20 +160,17 @@ export function calculateInstallmentPrice(
   surchargeRate: number
   surchargeAmount: number
 } {
-  const numPrice = typeof basePrice === "number" ? basePrice : Number(basePrice)
-  
-  // Tasas de recargo según número de cuotas
   const rates: Record<number, number> = {
-    1: 0,    // Contado - sin recargo
-    3: 18,   // +18%
-    6: 25,   // +25%
-    9: 35,   // +35%
-    12: 47,  // +47%
+    1: 0,
+    3: 18,
+    6: 25,
+    9: 35,
+    12: 47,
   }
 
   const surchargeRate = rates[installments] || 0
-  const surchargeAmount = Math.round(numPrice * (surchargeRate / 100))
-  const total = Math.round(numPrice + surchargeAmount)
+  const surchargeAmount = Math.round(basePrice * (surchargeRate / 100))
+  const total = Math.round(basePrice + surchargeAmount)
   const installmentAmount = Math.round(total / installments)
 
   return { 
@@ -196,20 +183,14 @@ export function calculateInstallmentPrice(
 
 /**
  * Calcula el balance restante de un pago
- * @param total - Total del documento
- * @param amountPaid - Monto pagado
- * @returns Balance (0 si está completamente pagado)
  */
 export function calculateBalance(
-  total: number | Decimal,
-  amountPaid: number | Decimal | null | undefined
+  total: number,
+  amountPaid: number | null | undefined
 ): number {
-  const numTotal = typeof total === "number" ? total : Number(total)
-  const numPaid = !amountPaid ? 0 : typeof amountPaid === "number" ? amountPaid : Number(amountPaid)
+  const numPaid = amountPaid || 0
+  const balance = total - numPaid
   
-  const balance = numTotal - numPaid
-  
-  // Si el balance es menor a $1, considerarlo como 0
   return balance < 1 && balance > -1 ? 0 : Math.round(balance)
 }
 
@@ -219,7 +200,6 @@ export function calculateBalance(
 
 /**
  * Formatea número de documento con padding
- * Ejemplo: 42 → "00042"
  */
 export function formatDocumentNumber(num: number | null | undefined): string {
   if (!num) return "00000"
@@ -266,27 +246,6 @@ export function generateWhatsAppLink(phone: string, message: string): string {
   return `https://wa.me/${cleanPhone}?text=${encodedMessage}`
 }
 
-/**
- * Genera mensaje de WhatsApp para compartir presupuesto
- */
-export function generateBudgetWhatsAppMessage(
-  clientName: string,
-  documentNumber: number,
-  total: number,
-  appUrl: string
-): string {
-  return `Hola ${clientName}! 👋
-
-Te envío tu presupuesto #${formatDocumentNumber(documentNumber)}
-
-💰 Total: ${formatCurrencyServer(total)}
-
-Podés verlo completo aquí:
-${appUrl}/presupuestos/${documentNumber}
-
-¿Tenés alguna consulta? ¡Estoy para ayudarte!`
-}
-
 // ============================================================================
 // VALIDACIONES
 // ============================================================================
@@ -308,14 +267,6 @@ export function isValidDNI(dni: string): boolean {
 }
 
 /**
- * Valida formato de CUIT/CUIL argentino
- */
-export function isValidCUIT(cuit: string): boolean {
-  const cleaned = cuit.replace(/\D/g, "")
-  return cleaned.length === 11
-}
-
-/**
  * Sanitiza string para prevenir XSS
  */
 export function sanitizeString(str: string): string {
@@ -325,44 +276,4 @@ export function sanitizeString(str: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#x27;")
     .replace(/\//g, "&#x2F;")
-}
-
-// ============================================================================
-// CONVERSIÓN DE DECIMALES
-// ============================================================================
-
-/**
- * Convierte Decimal de Prisma a número de forma segura - SOLO SERVIDOR
- */
-export function decimalToNumber(value: Decimal | number | null | undefined): number {
-  if (value === null || value === undefined) return 0
-  if (typeof value === "number") return value
-  return Number(value)
-}
-
-/**
- * Convierte número a Decimal de Prisma - SOLO SERVIDOR
- */
-export function numberToDecimal(value: number): Decimal {
-  return new Decimal(value)
-}
-
-// ============================================================================
-// HELPERS DE DESARROLLO
-// ============================================================================
-
-/**
- * Log estructurado para debugging
- */
-export function logDev(label: string, data: any) {
-  if (process.env.NODE_ENV === "development") {
-    console.log(`[${label}]`, JSON.stringify(data, null, 2))
-  }
-}
-
-/**
- * Delay helper para testing
- */
-export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
 }

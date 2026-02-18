@@ -26,7 +26,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { formatCurrency, formatDate, generateWhatsAppLink } from "@/lib/utils"
+import { formatCurrency, formatDate, generateWhatsAppLink } from "@/lib/utils-client"
 import type { DocumentStatus, DocumentType } from "@/types"
 
 interface Client {

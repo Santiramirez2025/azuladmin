@@ -14,7 +14,7 @@ import {
   ChevronRight,
   Sparkles,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils-client"  // ✅ ÚNICO CAMBIO: utils → utils-client
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 

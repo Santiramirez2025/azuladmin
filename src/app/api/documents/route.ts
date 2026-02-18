@@ -1,80 +1,108 @@
+// app/api/documentos/route.ts
 import { NextRequest, NextResponse } from "next/server"
-import { Prisma, PaymentMethod } from "@prisma/client"
-import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
+import prisma from "@/lib/prisma"
+import { createDocumentSchema, documentFilterSchema } from "@/lib/validations"
+import { calculateBalance, decimalToNumber } from "@/lib/utils"
+import { Decimal } from "@prisma/client/runtime/library"
 
 // ============================================================================
-// TIPOS Y VALIDACIONES
+// TIPOS
 // ============================================================================
 
-interface DocumentItemInput {
-  variantId?: string
-  isCustom?: boolean
-  productName?: string
-  productSize?: string
-  unitPrice?: number
-  quantity: number
-  source?: "STOCK" | "CATALOGO"
-}
+type DocumentType = "PRESUPUESTO" | "RECIBO" | "REMITO"
+type DocumentStatus = "DRAFT" | "SENT" | "APPROVED" | "COMPLETED" | "CANCELLED" | "EXPIRED"
+type PaymentMethod = "CONTADO" | "CUOTAS_3" | "CUOTAS_6" | "CUOTAS_9" | "CUOTAS_12"
 
-interface CreateDocumentInput {
-  clientId: string
-  userId?: string
-  type: "PRESUPUESTO" | "RECIBO" | "REMITO"
-  items: DocumentItemInput[]
-  observations?: string
-  internalNotes?: string
-  validUntil?: string
-  surchargeRate?: number
-  paymentMethod?: PaymentMethod | string
-  installments?: number
-  shippingType?: string
-  shippingCost?: number
-  amountPaid?: number
-  balance?: number
-  paymentType?: string
-}
-
-// ============================================================================
-// UTILIDADES
-// ============================================================================
-
-function validateDocumentInput(data: Partial<CreateDocumentInput>): {
+interface ValidationResult {
   valid: boolean
   error?: string
-} {
-  if (!data.clientId) {
-    return { valid: false, error: "El ID del cliente es requerido" }
+  details?: any
+}
+
+// ============================================================================
+// HELPERS - VALIDACIONES
+// ============================================================================
+
+/**
+ * Obtiene la tasa de recargo según el método de pago
+ */
+function getSurchargeRate(paymentMethod: PaymentMethod | null | undefined): number {
+  if (!paymentMethod) return 0
+  
+  const rates: Record<PaymentMethod, number> = {
+    CONTADO: 0,
+    CUOTAS_3: 18,
+    CUOTAS_6: 25,
+    CUOTAS_9: 35,
+    CUOTAS_12: 47,
+  }
+  
+  return rates[paymentMethod] || 0
+}
+
+/**
+ * Valida que haya stock disponible para los items solicitados
+ */
+async function validateStockAvailability(
+  items: Array<{ variantId?: string; quantity: number; isCustom?: boolean }>,
+  tx: Prisma.TransactionClient
+): Promise<ValidationResult> {
+  // Filtrar solo items del catálogo que requieren validación de stock
+  const catalogItems = items.filter(item => item.variantId && !item.isCustom)
+  
+  if (catalogItems.length === 0) {
+    return { valid: true }
   }
 
-  if (!data.type || !["PRESUPUESTO", "RECIBO", "REMITO"].includes(data.type)) {
-    return { valid: false, error: "El tipo de documento es inválido" }
-  }
-
-  if (!data.items || !Array.isArray(data.items) || data.items.length === 0) {
-    return { valid: false, error: "Debe incluir al menos un item" }
-  }
-
-  // Validar cada item
-  for (const [index, item] of data.items.entries()) {
-    if (!item.quantity || item.quantity <= 0) {
-      return { 
-        valid: false, 
-        error: `Item ${index + 1}: La cantidad debe ser mayor a 0` 
+  // Obtener variantes con stock actual
+  const variantIds = catalogItems.map(item => item.variantId!)
+  const variants = await tx.productVariant.findMany({
+    where: { 
+      id: { in: variantIds },
+      isActive: true,
+    },
+    include: {
+      product: {
+        select: { name: true }
       }
     }
+  })
 
-    if (item.isCustom || !item.variantId) {
-      // Item custom necesita nombre y precio
-      if (!item.productName?.trim()) {
-        return { 
-          valid: false, 
-          error: `Item ${index + 1}: El producto custom requiere nombre` 
-        }
-      }
-      if (!item.unitPrice || item.unitPrice <= 0) {
-        return { 
-          valid: false, 
-          error: `Item ${index + 1}: El producto custom requiere precio válido` 
+  // Verificar que todas las variantes existan
+  if (variants.length !== variantIds.length) {
+    const foundIds = new Set(variants.map(v => v.id))
+    const missingIds = variantIds.filter(id => !foundIds.has(id))
+    return {
+      valid: false,
+      error: "Algunos productos no están disponibles o fueron desactivados",
+      details: { missingVariantIds: missingIds }
+    }
+  }
+
+  // Crear mapa de variantes
+  const variantMap = new Map(variants.map(v => [v.id, v]))
+
+  // Validar stock disponible para items de STOCK
+  for (const item of catalogItems) {
+    const variant = variantMap.get(item.variantId!)!
+    
+    // Solo validar stock para items de showroom (STOCK)
+    if (variant.source === "STOCK") {
+      const availableStock = variant.stockQty
+      const requestedQty = item.quantity
+
+      if (availableStock < requestedQty) {
+        return {
+          valid: false,
+          error: `Stock insuficiente para "${variant.product.name} ${variant.size}"`,
+          details: {
+            product: variant.product.name,
+            size: variant.size,
+            available: availableStock,
+            requested: requestedQty,
+            missing: requestedQty - availableStock
+          }
         }
       }
     }
@@ -83,24 +111,34 @@ function validateDocumentInput(data: Partial<CreateDocumentInput>): {
   return { valid: true }
 }
 
+/**
+ * Construir filtros de búsqueda
+ */
 function buildSearchFilter(search: string): Prisma.DocumentWhereInput["OR"] {
   const filters: Prisma.DocumentWhereInput[] = [
     { client: { name: { contains: search, mode: "insensitive" } } },
-    { client: { phone: { contains: search, mode: "insensitive" } } },
+    { client: { phone: { contains: search } } },
     { client: { city: { contains: search, mode: "insensitive" } } },
     { observations: { contains: search, mode: "insensitive" } },
     { internalNotes: { contains: search, mode: "insensitive" } },
   ]
 
   // Si es un número, buscar por número de documento
-  if (!isNaN(Number(search))) {
-    filters.push({ number: { equals: parseInt(search) } })
+  const numSearch = parseInt(search)
+  if (!isNaN(numSearch)) {
+    filters.push({ number: { equals: numSearch } })
   }
 
   return filters
 }
 
-function getSortOrder(sortBy: string, sortOrder: "asc" | "desc"): Prisma.DocumentOrderByWithRelationInput {
+/**
+ * Obtener orden de clasificación
+ */
+function getSortOrder(
+  sortBy: string, 
+  sortOrder: "asc" | "desc"
+): Prisma.DocumentOrderByWithRelationInput {
   switch (sortBy) {
     case "number":
       return { number: sortOrder }
@@ -114,73 +152,56 @@ function getSortOrder(sortBy: string, sortOrder: "asc" | "desc"): Prisma.Documen
   }
 }
 
-// Validar y convertir paymentMethod al enum de Prisma
-function parsePaymentMethod(method: string | PaymentMethod | undefined): PaymentMethod | null {
-  if (!method) return null
-  
-  // Si ya es del tipo correcto, devolverlo
-  if (typeof method === "object") return method as PaymentMethod
-  
-  // Convertir string a enum
-  const validMethods: PaymentMethod[] = ["CONTADO", "CUOTAS_3", "CUOTAS_6", "CUOTAS_9", "CUOTAS_12"]
-  const upperMethod = method.toUpperCase()
-  
-  if (validMethods.includes(upperMethod as PaymentMethod)) {
-    return upperMethod as PaymentMethod
-  }
-  
-  return null
-}
-
 // ============================================================================
-// GET - Obtener documentos con filtros y paginación
+// GET - Listar documentos con filtros y paginación
 // ============================================================================
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
 
-    // Parámetros de búsqueda y filtrado
-    const search = searchParams.get("search")?.trim() || ""
-    const type = searchParams.get("type")
-    const status = searchParams.get("status")
-    const clientId = searchParams.get("clientId")
-    const sortBy = searchParams.get("sortBy") || "date"
-    const sortOrder = (searchParams.get("sortOrder") || "desc") as "asc" | "desc"
-    
-    // Paginación
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")))
-    const skip = (page - 1) * limit
+    // Parsear parámetros
+    const rawParams = {
+      search: searchParams.get("search")?.trim() || "",
+      type: searchParams.get("type") || "all",
+      status: searchParams.get("status") || "all",
+      clientId: searchParams.get("clientId") || undefined,
+      sortBy: searchParams.get("sortBy") || "date",
+      sortOrder: (searchParams.get("sortOrder") || "desc") as "asc" | "desc",
+      page: Math.max(1, parseInt(searchParams.get("page") || "1")),
+      limit: Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20"))),
+    }
 
-    // Construir filtros
+    const skip = (rawParams.page - 1) * rawParams.limit
+
+    // Construir filtros WHERE
     const where: Prisma.DocumentWhereInput = {}
 
-    if (search) {
-      where.OR = buildSearchFilter(search)
+    if (rawParams.search) {
+      where.OR = buildSearchFilter(rawParams.search)
     }
 
-    if (type && type !== "all") {
-      where.type = type as "PRESUPUESTO" | "RECIBO" | "REMITO"
+    if (rawParams.type && rawParams.type !== "all") {
+      where.type = rawParams.type as DocumentType
     }
 
-    if (status && status !== "all") {
-      where.status = status as Prisma.EnumDocumentStatusFilter
+    if (rawParams.status && rawParams.status !== "all") {
+      where.status = rawParams.status as DocumentStatus
     }
 
-    if (clientId) {
-      where.clientId = clientId
+    if (rawParams.clientId) {
+      where.clientId = rawParams.clientId
     }
 
-    const orderBy = getSortOrder(sortBy, sortOrder)
+    const orderBy = getSortOrder(rawParams.sortBy, rawParams.sortOrder)
 
-    // Ejecutar queries en paralelo para mejor performance
+    // ✅ Ejecutar queries en paralelo para mejor performance
     const [items, total, statsData] = await Promise.all([
       prisma.document.findMany({
         where,
         orderBy,
         skip,
-        take: limit,
+        take: rawParams.limit,
         include: {
           client: {
             select: {
@@ -203,17 +224,19 @@ export async function GET(request: NextRequest) {
           },
         },
       }),
+      
       prisma.document.count({ where }),
+      
       prisma.document.groupBy({
         by: ["status"],
-        _count: {
-          _all: true,
-        },
-        where: type && type !== "all" ? { type: type as any } : undefined,
+        _count: { _all: true },
+        where: rawParams.type && rawParams.type !== "all" 
+          ? { type: rawParams.type as DocumentType } 
+          : undefined,
       }),
     ])
 
-    // Procesar estadísticas
+    // Procesar estadísticas por status
     const stats = {
       total: 0,
       draft: 0,
@@ -234,21 +257,35 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Serializar Decimals a números
+    const serializedItems = items.map(item => ({
+      ...item,
+      subtotal: decimalToNumber(item.subtotal),
+      surcharge: decimalToNumber(item.surcharge),
+      total: decimalToNumber(item.total),
+      shippingCost: decimalToNumber(item.shippingCost),
+      amountPaid: item.amountPaid ? decimalToNumber(item.amountPaid) : null,
+      balance: item.balance ? decimalToNumber(item.balance) : null,
+    }))
+
     return NextResponse.json({
-      items,
+      items: serializedItems,
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: rawParams.page,
+      limit: rawParams.limit,
+      totalPages: Math.ceil(total / rawParams.limit),
       stats,
-      hasMore: page < Math.ceil(total / limit),
+      hasMore: rawParams.page < Math.ceil(total / rawParams.limit),
     })
+
   } catch (error) {
     console.error("❌ Error fetching documents:", error)
     return NextResponse.json(
       { 
         error: "Error al obtener documentos",
-        message: error instanceof Error ? error.message : "Error desconocido"
+        message: process.env.NODE_ENV === "development" && error instanceof Error
+          ? error.message
+          : undefined
       },
       { status: 500 }
     )
@@ -256,58 +293,50 @@ export async function GET(request: NextRequest) {
 }
 
 // ============================================================================
-// POST - Crear documento (OPTIMIZADO)
+// POST - Crear documento (TOTALMENTE REESCRITO Y OPTIMIZADO)
 // ============================================================================
 
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateDocumentInput = await request.json()
+    const body = await request.json()
     
-    console.log("📥 Recibiendo documento:", {
+    console.log("📥 POST /api/documentos - Recibiendo:", {
       type: body.type,
       clientId: body.clientId,
       itemsCount: body.items?.length
     })
 
-    // Validar entrada
-    const validation = validateDocumentInput(body)
-    if (!validation.valid) {
-      console.error("❌ Validación fallida:", validation.error)
+    // ✅ VALIDACIÓN CON ZOD
+    const validation = createDocumentSchema.safeParse(body)
+    
+    if (!validation.success) {
+      // validation.error.issues contiene los errores (no .errors)
+      const firstError = validation.error.issues[0]
+      console.error("❌ Validación Zod fallida:", firstError)
       return NextResponse.json(
-        { error: validation.error },
+        { 
+          error: firstError.message,
+          field: firstError.path.join("."),
+          details: process.env.NODE_ENV === "development" ? validation.error.issues : undefined
+        },
         { status: 400 }
       )
     }
 
-    const {
-      clientId,
-      userId: providedUserId,
-      type,
-      items,
-      observations,
-      internalNotes,
-      validUntil,
-      surchargeRate = 0,
-      paymentMethod: rawPaymentMethod,
-      installments,
-      shippingType = "Sin cargo en Villa María",
-      shippingCost = 0,
-      amountPaid,
-      balance,
-      paymentType,
-    } = body
+    const data = validation.data
 
-    // Parsear paymentMethod
-    const paymentMethod = parsePaymentMethod(rawPaymentMethod)
+    // ============================================================================
+    // PREPARACIÓN DE DATOS
+    // ============================================================================
 
     // Verificar que el cliente existe
     const client = await prisma.client.findUnique({
-      where: { id: clientId },
+      where: { id: data.clientId },
       select: { id: true, name: true },
     })
 
     if (!client) {
-      console.error("❌ Cliente no encontrado:", clientId)
+      console.error("❌ Cliente no encontrado:", data.clientId)
       return NextResponse.json(
         { error: "El cliente especificado no existe" },
         { status: 404 }
@@ -317,11 +346,12 @@ export async function POST(request: NextRequest) {
     console.log("✅ Cliente encontrado:", client.name)
 
     // Obtener o asignar usuario
-    let userId = providedUserId
+    let userId = data.userId
     if (!userId) {
       const defaultUser = await prisma.user.findFirst({
         orderBy: { createdAt: "asc" },
       })
+      
       if (!defaultUser) {
         console.error("❌ No hay usuarios en el sistema")
         return NextResponse.json(
@@ -329,197 +359,296 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
+      
       userId = defaultUser.id
       console.log("ℹ️ Usando usuario por defecto:", defaultUser.name)
     }
 
-    // Separar items del catálogo de items custom
-    const catalogItems = items.filter(
-      (item) => item.variantId && !item.isCustom
-    )
-    const customItems = items.filter(
-      (item) => item.isCustom || !item.variantId
-    )
+    // ============================================================================
+    // TRANSACCIÓN ATÓMICA - TODO O NADA
+    // ============================================================================
 
-    console.log(`📦 Items del catálogo: ${catalogItems.length}, Items custom: ${customItems.length}`)
+    const document = await prisma.$transaction(async (tx) => {
+      // ========================================================================
+      // PASO 1: VALIDAR STOCK DISPONIBLE (SI ES NECESARIO)
+      // ========================================================================
+      
+      const needsStockValidation = 
+        (data.type === "RECIBO" || data.type === "REMITO") &&
+        data.items.some(item => !item.isCustom && item.variantId)
 
-    // Obtener datos de variantes del catálogo
-    const variantIds = catalogItems.map((item) => item.variantId!)
-    const variants = variantIds.length > 0
-      ? await prisma.productVariant.findMany({
+      if (needsStockValidation) {
+        const stockValidation = await validateStockAvailability(data.items, tx)
+        
+        if (!stockValidation.valid) {
+          throw new Error(stockValidation.error || "Error de validación de stock")
+        }
+        
+        console.log("✅ Validación de stock OK")
+      }
+
+      // ========================================================================
+      // PASO 2: SEPARAR ITEMS - Type Guards para TypeScript
+      // ========================================================================
+      
+      // Type guard para items del catálogo
+      const isCatalogItem = (item: any): item is { variantId: string; quantity: number; isCustom?: false } => {
+        return 'variantId' in item && item.variantId && !item.isCustom
+      }
+      
+      // Type guard para items custom
+      const isCustomItem = (item: any): item is { isCustom: true; productName: string; productSize: string; unitPrice: number; quantity: number; source: "STOCK" | "CATALOGO" } => {
+        return item.isCustom === true
+      }
+      
+      const catalogItems = data.items.filter(isCatalogItem)
+      const customItems = data.items.filter(isCustomItem)
+
+      console.log(`📦 Items del catálogo: ${catalogItems.length}, Items custom: ${customItems.length}`)
+
+      // Obtener datos de variantes del catálogo
+      type VariantWithProduct = Prisma.ProductVariantGetPayload<{
+        include: { 
+          product: {
+            select: {
+              name: true
+              brand: true
+            }
+          }
+        }
+      }>
+
+      let variants: VariantWithProduct[] = []
+      if (catalogItems.length > 0) {
+        const variantIds = catalogItems.map(item => item.variantId)
+        variants = await tx.productVariant.findMany({
           where: { 
             id: { in: variantIds },
             isActive: true,
           },
-          include: { product: true },
+          include: { 
+            product: {
+              select: {
+                name: true,
+                brand: true,
+              }
+            }
+          },
         })
-      : []
-
-    // Verificar que todas las variantes existan
-    if (variants.length !== variantIds.length) {
-      const foundIds = new Set(variants.map(v => v.id))
-      const missingIds = variantIds.filter(id => !foundIds.has(id))
-      console.error("❌ Variantes no encontradas:", missingIds)
-      return NextResponse.json(
-        { error: `Variantes no encontradas o inactivas: ${missingIds.join(", ")}` },
-        { status: 404 }
-      )
-    }
-
-    const variantMap = new Map(variants.map((v) => [v.id, v]))
-
-    // Procesar todos los items
-    let subtotal = 0
-    const processedItems: Prisma.DocumentItemCreateWithoutDocumentInput[] = []
-
-    // Items del catálogo
-    for (const item of catalogItems) {
-      const variant = variantMap.get(item.variantId!)!
-      const itemSubtotal = item.quantity * Number(variant.price)
-      subtotal += itemSubtotal
-
-      processedItems.push({
-        variant: { connect: { id: item.variantId! } },
-        productName: variant.product.name,
-        productSize: variant.size,
-        unitPrice: variant.price,
-        quantity: item.quantity,
-        subtotal: itemSubtotal,
-        source: variant.source,
-        isCustom: false,
-      })
-    }
-
-    // Items custom (productos sueltos)
-    for (const item of customItems) {
-      const itemSubtotal = item.quantity * item.unitPrice!
-      subtotal += itemSubtotal
-
-      processedItems.push({
-        productName: item.productName!,
-        productSize: item.productSize || "Único",
-        unitPrice: item.unitPrice!,
-        quantity: item.quantity,
-        subtotal: itemSubtotal,
-        source: item.source || "CATALOGO",
-        isCustom: true,
-      })
-    }
-
-    console.log(`💰 Subtotal calculado: $${subtotal}`)
-
-    // Calcular totales
-    const surcharge = subtotal * (surchargeRate / 100)
-    const finalShippingCost = Number(shippingCost) || 0
-    const total = subtotal + surcharge + finalShippingCost
-
-    console.log(`💰 Total final: $${total}`)
-
-    // Validar fechas
-    const now = new Date()
-    let validUntilDate = null
-    
-    if (validUntil) {
-      validUntilDate = new Date(validUntil)
-      if (isNaN(validUntilDate.getTime())) {
-        console.error("❌ Fecha de validez inválida:", validUntil)
-        return NextResponse.json(
-          { error: "Fecha de validez inválida" },
-          { status: 400 }
-        )
       }
-    }
 
-    // Determinar status inicial
-    let initialStatus: "DRAFT" | "SENT" | "COMPLETED" = "DRAFT"
-    
-    // Si es un RECIBO con pago completo, marcar como completado
-    if (type === "RECIBO" && amountPaid && amountPaid >= total) {
-      initialStatus = "COMPLETED"
-    }
+      const variantMap = new Map(variants.map(v => [v.id, v]))
 
-    console.log(`📄 Creando documento: ${type} - Status inicial: ${initialStatus}`)
+      // ========================================================================
+      // PASO 3: CALCULAR TOTALES
+      // ========================================================================
+      
+      let subtotal = 0
+      const processedItems: Prisma.DocumentItemCreateWithoutDocumentInput[] = []
 
-    // Crear documento (sin transacción compleja)
-    const document = await prisma.document.create({
-      data: {
-        type,
-        status: initialStatus,
-        client: { connect: { id: clientId } },
-        createdBy: { connect: { id: userId } },
-        subtotal,
-        surcharge,
-        surchargeRate,
-        total,
-        observations: observations?.trim() || null,
-        internalNotes: internalNotes?.trim() || null,
-        date: now,
-        validUntil: validUntilDate,
-        paymentMethod: paymentMethod,
-        installments: installments || null,
-        amountPaid: amountPaid || null,
-        balance: balance || null,
-        paymentType: paymentType || null,
-        shippingType,
-        shippingCost: finalShippingCost,
-        items: {
-          create: processedItems,
-        },
-      },
-      include: {
-        client: true,
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
+      // Procesar items del catálogo
+      for (const item of catalogItems) {
+        const variant = variantMap.get(item.variantId!)
+        
+        if (!variant) {
+          throw new Error(`Variante ${item.variantId} no encontrada`)
+        }
+
+        const itemSubtotal = item.quantity * decimalToNumber(variant.price)
+        subtotal += itemSubtotal
+
+        processedItems.push({
+          variant: { connect: { id: item.variantId! } },
+          productName: variant.product.name,
+          productSize: variant.size,
+          unitPrice: variant.price,
+          quantity: item.quantity,
+          subtotal: new Decimal(itemSubtotal),
+          source: variant.source,
+          isCustom: false,
+        })
+      }
+
+      // Procesar items custom
+      for (const item of customItems) {
+        const itemSubtotal = item.quantity * item.unitPrice
+        subtotal += itemSubtotal
+
+        processedItems.push({
+          productName: item.productName,
+          productSize: item.productSize || "Único",
+          unitPrice: new Decimal(item.unitPrice),
+          quantity: item.quantity,
+          subtotal: new Decimal(itemSubtotal),
+          source: item.source || "CATALOGO",
+          isCustom: true,
+        })
+      }
+
+      console.log(`💰 Subtotal calculado: $${subtotal}`)
+
+      // ✅ CÁLCULO CORRECTO DE TOTALES
+      const surchargeRate = data.paymentMethod 
+        ? getSurchargeRate(data.paymentMethod as PaymentMethod)
+        : data.surchargeRate || 0
+
+      const surcharge = Math.round(subtotal * (surchargeRate / 100))
+      const shippingCost = data.shippingCost || 0
+      const total = subtotal + surcharge + shippingCost
+
+      console.log(`💰 Recargo (${surchargeRate}%): $${surcharge}`)
+      console.log(`💰 Envío: $${shippingCost}`)
+      console.log(`💰 TOTAL FINAL: $${total}`)
+
+      // ✅ CÁLCULO CORRECTO DE BALANCE (SIEMPRE EN BACKEND)
+      const amountPaid = data.amountPaid || 0
+      const balance = calculateBalance(total, amountPaid)
+
+      if (amountPaid > total) {
+        throw new Error(`El monto pagado ($${amountPaid}) no puede ser mayor al total ($${total})`)
+      }
+
+      console.log(`💰 Pagado: $${amountPaid} | Balance: $${balance}`)
+
+      // ========================================================================
+      // PASO 4: DETERMINAR STATUS INICIAL
+      // ========================================================================
+      
+      let initialStatus: DocumentStatus = "DRAFT"
+      
+      // Si es RECIBO con pago completo, marcar como COMPLETED
+      if (data.type === "RECIBO" && balance === 0 && amountPaid > 0) {
+        initialStatus = "COMPLETED"
+        console.log("✅ RECIBO con pago completo → Status COMPLETED")
+      }
+
+      // ========================================================================
+      // PASO 5: CREAR DOCUMENTO
+      // ========================================================================
+      
+      const validUntilDate = data.validUntil ? new Date(data.validUntil) : null
+      
+      const newDocument = await tx.document.create({
+        data: {
+          type: data.type,
+          status: initialStatus,
+          client: { connect: { id: data.clientId } },
+          createdBy: { connect: { id: userId } },
+          
+          // Totales calculados
+          subtotal: new Decimal(subtotal),
+          surcharge: new Decimal(surcharge),
+          surchargeRate,
+          shippingCost: new Decimal(shippingCost),
+          total: new Decimal(total),
+          
+          // Balance calculado correctamente
+          amountPaid: amountPaid > 0 ? new Decimal(amountPaid) : null,
+          balance: balance > 0 ? new Decimal(balance) : null,
+          
+          // Información de pago
+          paymentMethod: data.paymentMethod as PaymentMethod || null,
+          installments: data.installments || null,
+          paymentType: data.paymentType || null,
+          
+          // Envío
+          shippingType: data.shippingType,
+          
+          // Metadata
+          observations: data.observations?.trim() || null,
+          internalNotes: data.internalNotes?.trim() || null,
+          
+          // Fechas
+          date: new Date(),
+          validUntil: validUntilDate,
+          
+          // Items
+          items: {
+            create: processedItems,
           },
         },
-        items: {
-          include: {
-            variant: {
-              include: {
-                product: true,
+        include: {
+          client: true,
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          items: {
+            include: {
+              variant: {
+                include: {
+                  product: true,
+                },
               },
             },
           },
         },
-      },
-    })
+      })
 
-    // Actualizar stock DESPUÉS de crear el documento (si es necesario)
-    if ((type === "RECIBO" || type === "REMITO") && initialStatus === "COMPLETED") {
-      console.log("📦 Actualizando stock para items del catálogo...")
-      for (const item of catalogItems) {
-        const variant = variantMap.get(item.variantId!)!
-        if (variant.source === "STOCK") {
-          try {
-            await prisma.productVariant.update({
-              where: { id: variant.id },
+      // ========================================================================
+      // PASO 6: ACTUALIZAR STOCK (SI ES NECESARIO)
+      // ========================================================================
+      
+      if (initialStatus === "COMPLETED" && (data.type === "RECIBO" || data.type === "REMITO")) {
+        const stockItems = processedItems.filter(
+          item => item.source === "STOCK" && !item.isCustom
+        )
+
+        for (const item of stockItems) {
+          // Buscar el item original para obtener el variantId
+          const originalItem = catalogItems.find(
+            ci => variantMap.get(ci.variantId)?.product.name === item.productName
+          )
+
+          if (originalItem && originalItem.variantId) {
+            await tx.productVariant.update({
+              where: { id: originalItem.variantId },
               data: {
                 stockQty: {
-                  decrement: item.quantity,
-                },
-              },
+                  decrement: item.quantity
+                }
+              }
             })
-            console.log(`  ✅ Stock actualizado: ${variant.product.name} - ${variant.size} (-${item.quantity})`)
-          } catch (error) {
-            console.warn(`⚠️ No se pudo actualizar stock para ${variant.product.name}:`, error)
-            // No fallar todo el proceso por un error de stock
+            console.log(`📉 Stock descontado: ${item.productName} ${item.productSize} (-${item.quantity})`)
           }
         }
+
+        if (stockItems.length > 0) {
+          console.log(`✅ Stock actualizado para ${stockItems.length} items`)
+        }
       }
+
+      return newDocument
+    })
+
+    console.log(`✅ Documento creado: ${document.type} #${document.number}`)
+
+    // Serializar respuesta
+    const response = {
+      ...document,
+      subtotal: decimalToNumber(document.subtotal),
+      surcharge: decimalToNumber(document.surcharge),
+      total: decimalToNumber(document.total),
+      shippingCost: decimalToNumber(document.shippingCost),
+      amountPaid: document.amountPaid ? decimalToNumber(document.amountPaid) : null,
+      balance: document.balance ? decimalToNumber(document.balance) : null,
+      items: document.items.map(item => ({
+        ...item,
+        unitPrice: decimalToNumber(item.unitPrice),
+        subtotal: decimalToNumber(item.subtotal),
+      })),
     }
 
-    console.log(`✅ Documento creado exitosamente: ${document.type} #${document.number}`)
+    return NextResponse.json(response, { status: 201 })
 
-    return NextResponse.json(document, { status: 201 })
   } catch (error) {
     console.error("❌ Error creating document:", error)
-    console.error("Stack trace:", error instanceof Error ? error.stack : "No stack trace")
+    console.error("Stack:", error instanceof Error ? error.stack : "No stack")
     
     // Manejo específico de errores de Prisma
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      console.error("Prisma error code:", error.code)
       if (error.code === "P2002") {
         return NextResponse.json(
           { error: "Ya existe un documento con ese número" },
@@ -540,10 +669,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Error genérico
     return NextResponse.json(
       { 
-        error: "Error al crear documento",
-        message: error instanceof Error ? error.message : "Error desconocido",
+        error: error instanceof Error ? error.message : "Error al crear documento",
+        details: process.env.NODE_ENV === "development" && error instanceof Error
+          ? error.stack
+          : undefined
       },
       { status: 500 }
     )
@@ -565,10 +697,12 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Verificar que los documentos existen
+    console.log(`🗑️ DELETE batch - ${ids.length} documentos`)
+
+    // Verificar documentos y validar que se puedan eliminar
     const documents = await prisma.document.findMany({
       where: { id: { in: ids } },
-      select: { id: true, status: true },
+      select: { id: true, status: true, type: true, number: true },
     })
 
     if (documents.length !== ids.length) {
@@ -578,13 +712,14 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Prevenir eliminación de documentos completados (opcional)
+    // Prevenir eliminación de documentos completados
     const completedDocs = documents.filter(d => d.status === "COMPLETED")
     if (completedDocs.length > 0) {
       return NextResponse.json(
         { 
-          error: "No se pueden eliminar documentos completados",
-          completedIds: completedDocs.map(d => d.id)
+          error: "No se pueden eliminar documentos completados. Cancélalos primero.",
+          completedIds: completedDocs.map(d => d.id),
+          completedNumbers: completedDocs.map(d => `${d.type} #${d.number}`)
         },
         { status: 400 }
       )
@@ -592,12 +727,7 @@ export async function DELETE(request: NextRequest) {
 
     // Eliminar en transacción
     const result = await prisma.$transaction(async (tx) => {
-      // Primero eliminar items
-      await tx.documentItem.deleteMany({
-        where: { documentId: { in: ids } },
-      })
-
-      // Luego eliminar documentos
+      // Items se eliminan automáticamente por CASCADE
       const deleted = await tx.document.deleteMany({
         where: { id: { in: ids } },
       })
@@ -610,14 +740,17 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({
       success: true,
       count: result.count,
-      message: `${result.count} documento${result.count !== 1 ? "s" : ""} eliminado${result.count !== 1 ? "s" : ""} correctamente`,
+      message: `${result.count} documento${result.count !== 1 ? "s" : ""} eliminado${result.count !== 1 ? "s" : ""}`,
     })
+
   } catch (error) {
     console.error("❌ Error deleting documents:", error)
     return NextResponse.json(
       { 
         error: "Error al eliminar documentos",
-        message: error instanceof Error ? error.message : "Error desconocido"
+        message: process.env.NODE_ENV === "development" && error instanceof Error
+          ? error.message
+          : undefined
       },
       { status: 500 }
     )

@@ -1,12 +1,15 @@
+// app/api/documentos/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import prisma from "@/lib/prisma"
+import { updateDocumentSchema } from "@/lib/validations"
+import { calculateBalance, decimalToNumber } from "@/lib/utils"
 import { Decimal } from "@prisma/client/runtime/library"
+import { Prisma } from "@prisma/client"
 
 // ============================================================================
 // TIPOS
 // ============================================================================
 
-type DocumentType = "PRESUPUESTO" | "RECIBO" | "REMITO"
 type DocumentStatus = "DRAFT" | "SENT" | "APPROVED" | "COMPLETED" | "CANCELLED" | "EXPIRED"
 
 // ============================================================================
@@ -16,17 +19,17 @@ type DocumentStatus = "DRAFT" | "SENT" | "APPROVED" | "COMPLETED" | "CANCELLED" 
 function serializeDocument(document: any) {
   return {
     ...document,
-    subtotal: Number(document.subtotal),
-    surcharge: Number(document.surcharge),
-    total: Number(document.total),
-    shippingCost: Number(document.shippingCost),
-    amountPaid: document.amountPaid ? Number(document.amountPaid) : null,
-    balance: document.balance ? Number(document.balance) : null,
-    items: document.items.map((item: any) => ({
+    subtotal: decimalToNumber(document.subtotal),
+    surcharge: decimalToNumber(document.surcharge),
+    total: decimalToNumber(document.total),
+    shippingCost: decimalToNumber(document.shippingCost),
+    amountPaid: document.amountPaid ? decimalToNumber(document.amountPaid) : null,
+    balance: document.balance ? decimalToNumber(document.balance) : null,
+    items: document.items?.map((item: any) => ({
       ...item,
-      unitPrice: Number(item.unitPrice),
-      subtotal: Number(item.subtotal),
-    })),
+      unitPrice: decimalToNumber(item.unitPrice),
+      subtotal: decimalToNumber(item.subtotal),
+    })) || [],
   }
 }
 
@@ -60,6 +63,7 @@ export async function GET(
             address: true,
             city: true,
             province: true,
+            dni: true,
           },
         },
         createdBy: {
@@ -78,10 +82,26 @@ export async function GET(
                     id: true,
                     name: true,
                     brand: true,
+                    warranty: true,
                   },
                 },
               },
             },
+          },
+        },
+        convertedFrom: {
+          select: {
+            id: true,
+            number: true,
+            type: true,
+          },
+        },
+        convertedTo: {
+          select: {
+            id: true,
+            number: true,
+            type: true,
+            status: true,
           },
         },
       },
@@ -95,17 +115,23 @@ export async function GET(
     }
 
     return NextResponse.json(serializeDocument(document))
+
   } catch (error) {
     console.error("❌ Error fetching document:", error)
     return NextResponse.json(
-      { error: "Error al obtener documento" },
+      { 
+        error: "Error al obtener documento",
+        message: process.env.NODE_ENV === "development" && error instanceof Error
+          ? error.message
+          : undefined
+      },
       { status: 500 }
     )
   }
 }
 
 // ============================================================================
-// PATCH - Actualizar un documento (OPTIMIZADO)
+// PATCH - Actualizar un documento (COMPLETAMENTE REESCRITO)
 // ============================================================================
 
 export async function PATCH(
@@ -116,7 +142,8 @@ export async function PATCH(
     const { id } = await params
     const body = await request.json()
 
-    console.log(`📝 PATCH /api/documents/${id}`, JSON.stringify(body, null, 2))
+    console.log(`📝 PATCH /api/documentos/${id}`)
+    console.log("Body recibido:", JSON.stringify(body, null, 2))
 
     if (!id || typeof id !== "string") {
       return NextResponse.json(
@@ -125,234 +152,201 @@ export async function PATCH(
       )
     }
 
-    // ✅ Obtener documento completo con items para validaciones
-    const existingDocument = await prisma.document.findUnique({
-      where: { id },
-      include: {
-        items: {
-          include: {
-            variant: {
-              select: {
-                id: true,
-                stockQty: true,
-                source: true,
-                product: {
-                  select: {
-                    name: true,
+    // ✅ VALIDACIÓN CON ZOD
+    const validation = updateDocumentSchema.safeParse(body)
+    
+    if (!validation.success) {
+      // validation.error es ZodError y tiene la propiedad errors
+      const firstError = validation.error.issues[0]
+      console.error("❌ Validación Zod fallida:", firstError)
+      return NextResponse.json(
+        { 
+          error: firstError.message,
+          field: firstError.path.join("."),
+        },
+        { status: 400 }
+      )
+    }
+
+    const data = validation.data
+
+    // ============================================================================
+    // TRANSACCIÓN ATÓMICA
+    // ============================================================================
+
+    const document = await prisma.$transaction(async (tx) => {
+      // ========================================================================
+      // PASO 1: OBTENER DOCUMENTO ACTUAL
+      // ========================================================================
+      
+      const existing = await tx.document.findUnique({
+        where: { id },
+        include: {
+          items: {
+            include: {
+              variant: {
+                select: {
+                  id: true,
+                  stockQty: true,
+                  source: true,
+                  product: {
+                    select: { name: true }
                   }
                 }
               }
             }
           }
         }
-      }
-    })
+      })
 
-    if (!existingDocument) {
-      console.error(`❌ Documento ${id} no encontrado`)
-      return NextResponse.json(
-        { error: "Documento no encontrado" },
-        { status: 404 }
-      )
-    }
-
-    // Validaciones de negocio
-    const updateData: any = {}
-
-    // ============================================================================
-    // 1. VALIDAR Y PROCESAR CAMBIO DE STATUS
-    // ============================================================================
-    if (body.status) {
-      const validStatuses: DocumentStatus[] = ["DRAFT", "SENT", "APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"]
-      if (!validStatuses.includes(body.status)) {
-        return NextResponse.json(
-          { error: `Status inválido: ${body.status}` },
-          { status: 400 }
-        )
+      if (!existing) {
+        throw new Error("Documento no encontrado")
       }
 
-      // No permitir cambiar status de documentos cancelados
-      if (existingDocument.status === "CANCELLED" && body.status !== "CANCELLED") {
-        return NextResponse.json(
-          { error: "No se puede modificar el estado de un documento cancelado" },
-          { status: 400 }
-        )
+      console.log(`📄 Documento actual: ${existing.type} #${existing.number} - Status: ${existing.status}`)
+
+      // ========================================================================
+      // PASO 2: VALIDACIONES DE NEGOCIO
+      // ========================================================================
+
+      // No permitir modificar documentos cancelados
+      if (existing.status === "CANCELLED" && data.status !== "CANCELLED") {
+        throw new Error("No se puede modificar un documento cancelado")
       }
 
-      // ✅ VALIDAR STOCK DISPONIBLE al marcar como COMPLETED
-      if (
-        body.status === "COMPLETED" && 
-        existingDocument.status !== "COMPLETED" &&
-        (existingDocument.type === "RECIBO" || existingDocument.type === "REMITO")
-      ) {
-        const stockItems = existingDocument.items.filter(
-          item => item.source === "STOCK" && item.variantId && item.variant
-        )
+      // Preparar objeto de actualización
+      const updateData: any = {}
 
-        for (const item of stockItems) {
-          if (!item.variant) continue
+      // ========================================================================
+      // PASO 3: PROCESAR CAMBIO DE STATUS
+      // ========================================================================
+      
+      if (data.status) {
+        const oldStatus = existing.status
+        const newStatus = data.status
 
-          const availableStock = item.variant.stockQty
-          const requestedQty = item.quantity
+        console.log(`🔄 Cambio de status: ${oldStatus} → ${newStatus}`)
 
-          if (availableStock < requestedQty) {
-            return NextResponse.json(
-              { 
-                error: `Stock insuficiente para "${item.productName} ${item.productSize}"`,
-                details: {
-                  product: item.productName,
-                  size: item.productSize,
-                  available: availableStock,
-                  requested: requestedQty,
-                  missing: requestedQty - availableStock
-                }
-              },
-              { status: 400 }
-            )
+        // ✅ VALIDAR STOCK AL MARCAR COMO COMPLETED
+        if (
+          newStatus === "COMPLETED" && 
+          oldStatus !== "COMPLETED" &&
+          (existing.type === "RECIBO" || existing.type === "REMITO")
+        ) {
+          // Validar stock disponible
+          const stockItems = existing.items.filter(
+            item => item.source === "STOCK" && item.variantId && item.variant
+          )
+
+          for (const item of stockItems) {
+            if (!item.variant) continue
+
+            const availableStock = item.variant.stockQty
+            const requestedQty = item.quantity
+
+            if (availableStock < requestedQty) {
+              throw new Error(
+                `Stock insuficiente para "${item.productName} ${item.productSize}". ` +
+                `Disponible: ${availableStock}, Requerido: ${requestedQty}`
+              )
+            }
           }
+
+          console.log(`✅ Validación de stock OK para ${stockItems.length} items`)
         }
 
-        console.log(`✅ Validación de stock OK para ${stockItems.length} items`)
+        updateData.status = newStatus
       }
 
-      updateData.status = body.status
-    }
-
-    // ============================================================================
-    // 2. VALIDAR Y CALCULAR BALANCE SI HAY CAMBIOS EN PAGO
-    // ============================================================================
-    if (body.amountPaid !== undefined) {
-      const amountPaid = new Decimal(body.amountPaid)
-      const total = existingDocument.total
-
-      // Validar que el monto pagado no sea negativo
-      if (amountPaid.lessThan(0)) {
-        return NextResponse.json(
-          { error: "El monto pagado no puede ser negativo" },
-          { status: 400 }
-        )
-      }
-
-      // Validar que el monto pagado no exceda el total (con margen de 0.01 por redondeo)
-      if (amountPaid.greaterThan(total.plus(0.01))) {
-        return NextResponse.json(
-          { 
-            error: "El monto pagado no puede ser mayor al total",
-            details: {
-              amountPaid: amountPaid.toNumber(),
-              total: Number(total)
-            }
-          },
-          { status: 400 }
-        )
-      }
-
-      updateData.amountPaid = amountPaid
-      updateData.balance = total.minus(amountPaid)
-      
-      // Si el balance es muy pequeño (< 1 peso), considerarlo como 0
-      if (updateData.balance.lessThan(1) && updateData.balance.greaterThan(-1)) {
-        updateData.balance = new Decimal(0)
-      }
-      
-      console.log(`💰 Cálculo de balance:`)
-      console.log(`   Total: ${total}`)
-      console.log(`   Pagado: ${amountPaid}`)
-      console.log(`   Balance: ${updateData.balance}`)
-    }
-
-    // ============================================================================
-    // 3. VALIDAR PAYMENT TYPE
-    // ============================================================================
-    if (body.paymentType !== undefined) {
-      if (existingDocument.type !== "RECIBO") {
-        return NextResponse.json(
-          { error: "Solo los recibos pueden tener información de pago" },
-          { status: 400 }
-        )
-      }
-
-      const validPaymentTypes = ["Efectivo", "Transferencia", "Débito", "Crédito", "Cheque", "Mixto"]
-      if (body.paymentType && !validPaymentTypes.includes(body.paymentType)) {
-        return NextResponse.json(
-          { 
-            error: "Tipo de pago inválido",
-            validOptions: validPaymentTypes
-          },
-          { status: 400 }
-        )
-      }
-
-      updateData.paymentType = body.paymentType
-    }
-
-    // ============================================================================
-    // 4. VALIDAR INSTALLMENTS
-    // ============================================================================
-    if (body.installments !== undefined) {
-      const installments = parseInt(body.installments)
-      if (isNaN(installments) || installments < 1 || installments > 12) {
-        return NextResponse.json(
-          { error: "Las cuotas deben ser un número entre 1 y 12" },
-          { status: 400 }
-        )
-      }
-      updateData.installments = installments
-    }
-
-    // ============================================================================
-    // 5. CAMPOS OPCIONALES
-    // ============================================================================
-    if (body.observations !== undefined) {
-      updateData.observations = body.observations || null
-    }
-
-    if (body.internalNotes !== undefined) {
-      updateData.internalNotes = body.internalNotes || null
-    }
-
-    if (body.shippingType !== undefined) {
-      if (!body.shippingType || body.shippingType.trim() === "") {
-        return NextResponse.json(
-          { error: "El tipo de envío no puede estar vacío" },
-          { status: 400 }
-        )
-      }
-      updateData.shippingType = body.shippingType
-    }
-
-    if (body.shippingCost !== undefined) {
-      const shippingCost = new Decimal(body.shippingCost)
-      if (shippingCost.lessThan(0)) {
-        return NextResponse.json(
-          { error: "El costo de envío no puede ser negativo" },
-          { status: 400 }
-        )
-      }
-      updateData.shippingCost = shippingCost
-    }
-
-    // Si no hay nada que actualizar
-    if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        { error: "No se proporcionaron campos para actualizar" },
-        { status: 400 }
-      )
-    }
-
-    // ============================================================================
-    // 6. ACTUALIZAR DOCUMENTO CON TRANSACCIÓN (INCLUYE GESTIÓN DE STOCK)
-    // ============================================================================
-    const document = await prisma.$transaction(async (tx) => {
       // ========================================================================
-      // A) ACTUALIZAR EL DOCUMENTO
+      // PASO 4: PROCESAR CAMBIOS EN PAGO
       // ========================================================================
+      
+      if (data.amountPaid !== undefined) {
+        const amountPaid = new Decimal(data.amountPaid)
+        const total = existing.total
+
+        // Validaciones
+        if (amountPaid.lessThan(0)) {
+          throw new Error("El monto pagado no puede ser negativo")
+        }
+
+        if (amountPaid.greaterThan(total.plus(0.01))) {
+          throw new Error(
+            `El monto pagado ($${amountPaid}) no puede ser mayor al total ($${total})`
+          )
+        }
+
+        // ✅ CALCULAR BALANCE CORRECTAMENTE
+        const balance = calculateBalance(decimalToNumber(total), data.amountPaid)
+        
+        updateData.amountPaid = amountPaid
+        updateData.balance = new Decimal(balance)
+        
+        console.log(`💰 Actualización de pago:`)
+        console.log(`   Total: $${total}`)
+        console.log(`   Pagado: $${amountPaid}`)
+        console.log(`   Balance: $${balance}`)
+
+        // Si el balance llega a 0, auto-completar el documento
+        if (balance === 0 && existing.type === "RECIBO" && existing.status !== "COMPLETED") {
+          updateData.status = "COMPLETED"
+          console.log("✅ Balance en 0 → Auto-completando documento")
+        }
+      }
+
+      // ========================================================================
+      // PASO 5: OTROS CAMPOS OPCIONALES
+      // ========================================================================
+      
+      if (data.paymentType !== undefined) {
+        if (existing.type !== "RECIBO") {
+          throw new Error("Solo los recibos pueden tener información de pago")
+        }
+        updateData.paymentType = data.paymentType
+      }
+
+      if (data.installments !== undefined) {
+        updateData.installments = data.installments
+      }
+
+      if (data.observations !== undefined) {
+        updateData.observations = data.observations || null
+      }
+
+      if (data.internalNotes !== undefined) {
+        updateData.internalNotes = data.internalNotes || null
+      }
+
+      if (data.shippingType !== undefined) {
+        if (!data.shippingType || data.shippingType.trim() === "") {
+          throw new Error("El tipo de envío no puede estar vacío")
+        }
+        updateData.shippingType = data.shippingType
+      }
+
+      if (data.shippingCost !== undefined) {
+        const shippingCost = new Decimal(data.shippingCost)
+        if (shippingCost.lessThan(0)) {
+          throw new Error("El costo de envío no puede ser negativo")
+        }
+        updateData.shippingCost = shippingCost
+      }
+
+      // Si no hay nada que actualizar
+      if (Object.keys(updateData).length === 0) {
+        throw new Error("No se proporcionaron campos para actualizar")
+      }
+
+      // ========================================================================
+      // PASO 6: ACTUALIZAR DOCUMENTO
+      // ========================================================================
+      
+      updateData.updatedAt = new Date()
+
       const updated = await tx.document.update({
         where: { id },
-        data: {
-          ...updateData,
-          updatedAt: new Date(),
-        },
+        data: updateData,
         include: {
           client: {
             select: {
@@ -390,66 +384,83 @@ export async function PATCH(
       })
 
       // ========================================================================
-      // B) GESTIÓN DE STOCK - SOLO PARA RECIBOS Y REMITOS
+      // PASO 7: GESTIÓN DE STOCK (BIDIRECCIONAL)
       // ========================================================================
+      
       const isStockRelevantType = 
-        existingDocument.type === "RECIBO" || existingDocument.type === "REMITO"
+        existing.type === "RECIBO" || existing.type === "REMITO"
 
-      // ✅ CASO 1: Marcar como COMPLETED (DESCONTAR STOCK)
-      if (
-        body.status === "COMPLETED" && 
-        existingDocument.status !== "COMPLETED" &&
-        isStockRelevantType
-      ) {
-        const stockItems = updated.items.filter(
-          item => item.source === "STOCK" && item.variantId
-        )
-        
-        for (const item of stockItems) {
-          if (item.variantId) {
-            await tx.productVariant.update({
-              where: { id: item.variantId },
-              data: {
-                stockQty: {
-                  decrement: item.quantity
+      if (isStockRelevantType && data.status) {
+        const oldStatus = existing.status
+        const newStatus = data.status
+
+        // ✅ CASO 1: Marcar como COMPLETED (DESCONTAR STOCK)
+        if (newStatus === "COMPLETED" && oldStatus !== "COMPLETED") {
+          const stockItems = updated.items.filter(
+            item => item.source === "STOCK" && item.variantId
+          )
+          
+          for (const item of stockItems) {
+            if (item.variantId) {
+              await tx.productVariant.update({
+                where: { id: item.variantId },
+                data: {
+                  stockQty: { decrement: item.quantity }
                 }
-              }
-            })
-            console.log(`📉 Stock descontado: ${item.productName} ${item.productSize} (-${item.quantity})`)
+              })
+              console.log(`📉 Stock descontado: ${item.productName} ${item.productSize} (-${item.quantity})`)
+            }
+          }
+          
+          if (stockItems.length > 0) {
+            console.log(`✅ Stock descontado para ${stockItems.length} items`)
           }
         }
-        
-        if (stockItems.length > 0) {
-          console.log(`✅ Stock actualizado para ${stockItems.length} items`)
-        }
-      }
 
-      // ✅ CASO 2: CANCELAR documento COMPLETED (RESTAURAR STOCK)
-      if (
-        body.status === "CANCELLED" && 
-        existingDocument.status === "COMPLETED" &&
-        isStockRelevantType
-      ) {
-        const stockItems = updated.items.filter(
-          item => item.source === "STOCK" && item.variantId
-        )
-        
-        for (const item of stockItems) {
-          if (item.variantId) {
-            await tx.productVariant.update({
-              where: { id: item.variantId },
-              data: {
-                stockQty: {
-                  increment: item.quantity
+        // ✅ CASO 2: CANCELAR documento COMPLETED (RESTAURAR STOCK)
+        if (newStatus === "CANCELLED" && oldStatus === "COMPLETED") {
+          const stockItems = updated.items.filter(
+            item => item.source === "STOCK" && item.variantId
+          )
+          
+          for (const item of stockItems) {
+            if (item.variantId) {
+              await tx.productVariant.update({
+                where: { id: item.variantId },
+                data: {
+                  stockQty: { increment: item.quantity }
                 }
-              }
-            })
-            console.log(`📈 Stock restaurado: ${item.productName} ${item.productSize} (+${item.quantity})`)
+              })
+              console.log(`📈 Stock restaurado: ${item.productName} ${item.productSize} (+${item.quantity})`)
+            }
+          }
+          
+          if (stockItems.length > 0) {
+            console.log(`✅ Stock restaurado para ${stockItems.length} items`)
           }
         }
-        
-        if (stockItems.length > 0) {
-          console.log(`✅ Stock restaurado para ${stockItems.length} items`)
+
+        // ✅ CASO 3: Cambiar de COMPLETED a otro status (RESTAURAR STOCK)
+        if (oldStatus === "COMPLETED" && newStatus !== "COMPLETED" && newStatus !== "CANCELLED") {
+          const stockItems = updated.items.filter(
+            item => item.source === "STOCK" && item.variantId
+          )
+          
+          for (const item of stockItems) {
+            if (item.variantId) {
+              await tx.productVariant.update({
+                where: { id: item.variantId },
+                data: {
+                  stockQty: { increment: item.quantity }
+                }
+              })
+              console.log(`📈 Stock restaurado: ${item.productName} ${item.productSize} (+${item.quantity})`)
+            }
+          }
+          
+          if (stockItems.length > 0) {
+            console.log(`✅ Stock restaurado para ${stockItems.length} items`)
+          }
         }
       }
 
@@ -459,10 +470,11 @@ export async function PATCH(
     console.log(`✅ Documento ${id} actualizado exitosamente`)
 
     return NextResponse.json(serializeDocument(document))
+
   } catch (error: any) {
     console.error("❌ Error updating document:", error)
     
-    // Error de validación de Prisma
+    // Error de Prisma - registro no encontrado
     if (error.code === "P2025") {
       return NextResponse.json(
         { error: "Documento no encontrado" },
@@ -478,6 +490,14 @@ export async function PATCH(
       )
     }
 
+    // Error de negocio
+    if (error.message) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      )
+    }
+
     return NextResponse.json(
       { 
         error: "Error al actualizar documento",
@@ -489,7 +509,7 @@ export async function PATCH(
 }
 
 // ============================================================================
-// DELETE - Eliminar un documento (OPTIMIZADO)
+// DELETE - Eliminar un documento
 // ============================================================================
 
 export async function DELETE(
@@ -499,7 +519,7 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    console.log(`🗑️ DELETE /api/documents/${id}`)
+    console.log(`🗑️ DELETE /api/documentos/${id}`)
 
     if (!id || typeof id !== "string") {
       return NextResponse.json(
@@ -509,7 +529,7 @@ export async function DELETE(
     }
 
     // ✅ Verificar que el documento existe
-    const existingDocument = await prisma.document.findUnique({
+    const existing = await prisma.document.findUnique({
       where: { id },
       select: {
         id: true,
@@ -519,8 +539,7 @@ export async function DELETE(
       },
     })
 
-    if (!existingDocument) {
-      console.error(`❌ Documento ${id} no encontrado`)
+    if (!existing) {
       return NextResponse.json(
         { error: "Documento no encontrado" },
         { status: 404 }
@@ -528,33 +547,31 @@ export async function DELETE(
     }
 
     // ✅ Validación: no permitir eliminar documentos completados
-    if (existingDocument.status === "COMPLETED") {
+    if (existing.status === "COMPLETED") {
       return NextResponse.json(
         { 
           error: "No se puede eliminar un documento completado",
-          suggestion: "Cancela el documento usando PATCH /api/documents/:id con status: 'CANCELLED'"
+          suggestion: "Cancela el documento usando PATCH con status: 'CANCELLED'"
         },
         { status: 400 }
       )
     }
 
-    // ✅ Usar transacción para eliminar (los items se borran por CASCADE)
-    await prisma.$transaction(async (tx) => {
-      await tx.document.delete({
-        where: { id },
-      })
+    // ✅ Eliminar (los items se borran automáticamente por CASCADE)
+    await prisma.document.delete({
+      where: { id },
     })
 
-    console.log(`✅ Documento ${existingDocument.type} #${existingDocument.number} eliminado`)
+    console.log(`✅ Documento ${existing.type} #${existing.number} eliminado`)
 
     return NextResponse.json({ 
       success: true,
-      message: `Documento ${existingDocument.type} #${existingDocument.number} eliminado exitosamente`
+      message: `Documento ${existing.type} #${existing.number} eliminado exitosamente`
     })
+
   } catch (error: any) {
     console.error("❌ Error deleting document:", error)
     
-    // Error de constraint de Prisma
     if (error.code === "P2003") {
       return NextResponse.json(
         { error: "No se puede eliminar el documento debido a referencias existentes" },

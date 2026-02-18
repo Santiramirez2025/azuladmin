@@ -44,7 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { cn, formatCurrency } from "@/lib/utils"
+import { cn, formatCurrency } from "@/lib/utils-client"
 
 // ============================================================================
 // Types
