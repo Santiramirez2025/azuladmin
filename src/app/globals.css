@@ -401,24 +401,21 @@ video {
    PRINT STYLES (Para facturas, reportes, etc.)
    ============================================================================ */
 
-@media print {
-  body {
-    background: white;
-    color: black;
+   @media print {
+    body {
+      background: white !important;
+      color: black !important;
+    }
+    
+    .no-print,
+    .screen-only {
+      display: none !important;
+    }
+    
+    .print-break {
+      page-break-after: always;
+    }
   }
-  
-  .no-print {
-    display: none !important;
-  }
-  
-  .print-break {
-    page-break-after: always;
-  }
-  
-  @page {
-    margin: 1.5cm;
-  }
-}
 
 /* ============================================================================
    DARK MODE PREPARATION (Para futuro)
