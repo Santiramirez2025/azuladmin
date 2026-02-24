@@ -1,0 +1,285 @@
+// prisma/schema.prisma — ACTUALIZADO
+// ─────────────────────────────────────────────────────────────────────────────
+// CAMBIOS RESPECTO A LA VERSIÓN ANTERIOR:
+//  1. DocumentItem: agregado campo `isFree Boolean @default(false)`
+//  2. DocumentItem: agregado índice en `isFree` (para queries de estadísticas)
+//  3. Comentarios de negocio actualizados para reflejar la lógica de isFree
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════
+// USUARIOS Y AUTENTICACIÓN
+// ═══════════════════════════════════════════════════════════
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      Role     @default(VENDEDOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents Document[]
+
+  @@index([email])
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  VENDEDOR
+}
+
+// ═══════════════════════════════════════════════════════════
+// CLIENTES
+// ═══════════════════════════════════════════════════════════
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  dni       String?
+  phone     String
+  email     String?
+  address   String?
+  city      String   @default("Villa María")
+  province  String   @default("Córdoba")
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents Document[]
+
+  @@index([phone])
+  @@index([name])
+  @@index([createdAt])
+  @@map("clients")
+}
+
+// ═══════════════════════════════════════════════════════════
+// PRODUCTOS
+// ═══════════════════════════════════════════════════════════
+
+model Product {
+  id          String   @id @default(cuid())
+  sku         String   @unique
+  name        String
+  category    Category @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  brand       String   @default("PIERO")
+  description String?  @db.Text
+  warranty    Int      @default(5)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  variants ProductVariant[]
+
+  @@index([categoryId])
+  @@index([isActive])
+  @@index([sku])
+  @@index([name])
+  @@map("products")
+}
+
+model ProductVariant {
+  id        String      @id @default(cuid())
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  size      String
+  price     Decimal     @db.Decimal(12, 2)
+  costPrice Decimal?    @db.Decimal(12, 2)
+  source    StockSource @default(CATALOGO)
+  stockQty  Int         @default(0)
+  minStock  Int         @default(0)
+  isActive  Boolean     @default(true)
+
+  documentItems DocumentItem[]
+
+  @@unique([productId, size])
+  @@index([productId])
+  @@index([source])
+  @@index([isActive])
+  @@map("product_variants")
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  icon     String?
+  order    Int       @default(0)
+  products Product[]
+
+  @@index([order])
+  @@map("categories")
+}
+
+enum StockSource {
+  STOCK    // Disponible en showroom - entrega inmediata
+  CATALOGO // Pedido a fábrica - 7-10 días hábiles
+}
+
+// ═══════════════════════════════════════════════════════════
+// DOCUMENTOS
+// ═══════════════════════════════════════════════════════════
+
+model Document {
+  id     String         @id @default(cuid())
+  number Int            @default(autoincrement())
+  type   DocumentType
+  status DocumentStatus @default(DRAFT)
+
+  client    Client @relation(fields: [clientId], references: [id])
+  clientId  String
+  createdBy User   @relation(fields: [userId], references: [id])
+  userId    String
+
+  date       DateTime  @default(now())
+  validUntil DateTime?
+
+  items DocumentItem[]
+
+  // Totales
+  subtotal     Decimal @db.Decimal(12, 2)
+  surcharge    Decimal @default(0) @db.Decimal(12, 2)
+  surchargeRate Int    @default(0)
+  shippingCost Decimal @default(0) @db.Decimal(12, 2)
+  total        Decimal @db.Decimal(12, 2)
+
+  // Pago (solo RECIBO)
+  paymentMethod PaymentMethod?
+  paymentType   String?
+  installments  Int?
+  amountPaid    Decimal? @db.Decimal(12, 2)
+  balance       Decimal? @db.Decimal(12, 2)
+
+  shippingType String @default("Sin cargo en Villa María")
+
+  observations  String? @db.Text
+  internalNotes String? @db.Text
+
+  convertedFrom   Document?  @relation("DocumentConversion", fields: [convertedFromId], references: [id])
+  convertedFromId String?
+  convertedTo     Document[] @relation("DocumentConversion")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([date(sort: Desc)])
+  @@index([number(sort: Desc)])
+  @@index([type, status])
+  @@index([convertedFromId])
+  @@index([paymentMethod])
+  @@map("documents")
+}
+
+model DocumentItem {
+  id         String   @id @default(cuid())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String
+
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+  variantId String?
+
+  // ══ SNAPSHOT ══════════════════════════════════════════════
+  // Valores congelados al momento de crear el documento.
+  // No cambian aunque se modifique el producto original.
+  productName String
+  productSize String
+  unitPrice   Decimal     @db.Decimal(12, 2)
+  quantity    Int         @default(1)
+  subtotal    Decimal     @db.Decimal(12, 2) // unitPrice * quantity, o 0 si isFree
+  source      StockSource @default(CATALOGO)
+
+  // ── NUEVO: Flag canónico para productos bonificados ────────
+  // Reglas:
+  //  • isFree = true  → subtotal SIEMPRE se guarda como 0
+  //  • isFree = true  → unitPrice guarda el precio original (para auditoría/descuento)
+  //  • isFree = false → subtotal = unitPrice * quantity (normal)
+  //  • NUNCA derivar lógica de isFree desde unitPrice == 0
+  isFree   Boolean @default(false)
+
+  // Flag para productos sin variante vinculada
+  isCustom Boolean @default(false)
+
+  @@index([documentId])
+  @@index([variantId])
+  @@index([isFree]) // Para queries de estadísticas de bonificaciones
+  @@map("document_items")
+}
+
+enum DocumentType {
+  PRESUPUESTO
+  RECIBO
+  REMITO
+}
+
+enum DocumentStatus {
+  DRAFT
+  SENT
+  APPROVED
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentMethod {
+  CONTADO
+  CUOTAS_3
+  CUOTAS_6
+  CUOTAS_9
+  CUOTAS_12
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value Json
+
+  @@index([key])
+  @@map("settings")
+}
+
+// ═══════════════════════════════════════════════════════════
+// FLUJOS Y REGLAS DE NEGOCIO
+// ═══════════════════════════════════════════════════════════
+
+// FLUJO DE DOCUMENTOS:
+//  PRESUPUESTO: DRAFT → SENT → APPROVED/CANCELLED/EXPIRED
+//  RECIBO:      DRAFT → SENT → APPROVED → COMPLETED/CANCELLED
+//  REMITO:      DRAFT → SENT → COMPLETED
+
+// LÓGICA DE isFree EN BACKEND (API /documents):
+//  if (item.isFree) {
+//    item.unitPrice = 0      // limpiar precio antes de guardar
+//    item.subtotal  = 0      // siempre 0
+//  } else {
+//    item.subtotal = item.unitPrice * item.quantity
+//  }
+//  // Validar: isFree items no deben sumar al subtotal del documento
+//  document.subtotal = items
+//    .filter(i => !i.isFree)
+//    .reduce((sum, i) => sum + i.subtotal, 0)
+
+// CÁLCULO DE BALANCE (backend al crear/actualizar):
+//  balance = total - (amountPaid ?? 0)
+//  if (balance < 0.01) balance = 0   // tolerancia de flotantes
+
+// STOCK:
+//  Al marcar RECIBO como COMPLETED:
+//    items.filter(i => i.source === "STOCK" && !i.isFree)
+//         .forEach(i => decrementStock(i.variantId, i.quantity))
+
+// MIGRATION necesaria para campo isFree:
+//  npx prisma migrate dev --name add_is_free_to_document_item
