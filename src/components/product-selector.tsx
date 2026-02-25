@@ -228,13 +228,27 @@ function ProductSearch({ onSelect }: ProductSearchProps) {
       setVariants([])
       return
     }
-
+  
     setIsLoading(true)
     try {
-      const res = await fetch(`/api/products/search?q=${encodeURIComponent(query)}`)
+      const res = await fetch(`/api/products?search=${encodeURIComponent(query)}`)
       if (res.ok) {
         const data = await res.json()
-        setVariants(data.variants || [])
+        // La API devuelve { items: Product[] } con variants anidadas,
+        // hay que aplanarlas para que el selector reciba ProductVariant[]
+        const flatVariants = (data.items || []).flatMap((product: any) =>
+          (product.variants || []).map((variant: any) => ({
+            ...variant,
+            price: Number(variant.price),
+            product: {
+              id: product.id,
+              name: product.name,
+              brand: product.brand,
+              sku: product.sku,
+            },
+          }))
+        )
+        setVariants(flatVariants)
       }
     } catch (error) {
       console.error("Error searching products:", error)

@@ -379,10 +379,21 @@ export const ProductSelector = memo(function ProductSelector({
     if (query.length < 2) { setSearchResults([]); return }
     setIsSearching(true)
     try {
-      const res = await fetch(`/api/products/search?q=${encodeURIComponent(query)}&limit=15`)
+      const res = await fetch(`/api/products?search=${encodeURIComponent(query)}`)
       if (res.ok) {
         const data = await res.json()
-        setSearchResults(data.items ?? [])
+        // Aplanar products[]→variants[] al formato que espera el componente
+        const items: ProductVariantResult[] = (data.items || []).flatMap((product: any) =>
+          (product.variants || []).map((variant: any) => ({
+            variantId:   variant.id,
+            productName: product.name,
+            productSize: variant.size,
+            price:       Number(variant.price),
+            source:      variant.source,
+            sku:         product.sku,
+          }))
+        )
+        setSearchResults(items)
       }
     } catch (err) {
       console.error("Error buscando productos:", err)
