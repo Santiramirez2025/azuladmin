@@ -211,6 +211,7 @@ model DocumentItem {
 
   // Flag para productos personalizados (sin variante vinculada)
   isCustom    Boolean         @default(false)
+  isFree      Boolean         @default(false)    // ← agregar esta línea
 
   @@index([documentId])
   @@index([variantId])

@@ -23,12 +23,38 @@ import {
   Receipt,
   DollarSign,
   AlertTriangle,
+  Bell,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency, formatDate, generateWhatsAppLink } from "@/lib/utils-client"
 import type { DocumentStatus, DocumentType } from "@/types"
+
+// ============================================================================
+// CONFIGURACIÓN DEL NEGOCIO
+// ============================================================================
+
+const BUSINESS = {
+  name: "AZUL COLCHONES",
+  tagline: "Descanso de calidad desde 1989",
+  address: "Balerdi 855, Villa María, Córdoba",
+  phone: "3534 096566",
+  email: "info@azulcolchones.com",
+  cuit: "20-18015808-2",
+  iibb: "215-266214",
+  inicioActividad: "01/11/2006",
+}
+
+// Número del dueño para notificaciones de ventas
+const OWNER_NOTIFICATION_PHONE = "3536560294"
+
+// Número del repartidor para notificaciones de remito/entrega
+const DELIVERY_NOTIFICATION_PHONE = "5493535694658"
+
+// ============================================================================
+// TIPOS
+// ============================================================================
 
 interface DocumentDetail {
   id: string
@@ -72,6 +98,10 @@ interface DocumentDetail {
   }[]
 }
 
+// ============================================================================
+// CONFIGURACIÓN DE ESTADOS Y TIPOS
+// ============================================================================
+
 const statusConfig: Record<DocumentStatus, { label: string; color: "default" | "secondary" | "success" | "warning" | "destructive"; icon: typeof Clock; gradient: string }> = {
   DRAFT: { label: "Borrador", color: "secondary", icon: Clock, gradient: "from-slate-500 to-slate-600" },
   SENT: { label: "Enviado", color: "warning", icon: Send, gradient: "from-amber-500 to-orange-600" },
@@ -88,18 +118,8 @@ const typeLabels: Record<DocumentType, string> = {
 }
 
 // ============================================================================
-// DATOS FISCALES DEL NEGOCIO
+// COMPONENTE PRINCIPAL
 // ============================================================================
-const BUSINESS = {
-  name: "AZUL COLCHONES",
-  tagline: "Descanso de calidad desde 1989",
-  address: "Balerdi 855, Villa María, Córdoba",
-  phone: "3534 096566",
-  email: "info@azulcolchones.com",
-  cuit: "20-18015808-2",
-  iibb: "215-266214",
-  inicioActividad: "01/11/2006",
-}
 
 export default function DocumentoPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
@@ -109,6 +129,8 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
   const [error, setError] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
+
+  // ── Fetch document ─────────────────────────────────────────────────────────
 
   useEffect(() => {
     const fetchDocument = async () => {
@@ -130,6 +152,8 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
     }
     fetchDocument()
   }, [resolvedParams.id])
+
+  // ── Actualizar estado ──────────────────────────────────────────────────────
 
   const updateStatus = async (status: DocumentStatus) => {
     if (!document || isUpdating) return
@@ -154,9 +178,13 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
     }
   }
 
+  // ── Imprimir ───────────────────────────────────────────────────────────────
+
   const handlePrint = () => {
     window.print()
   }
+
+  // ── Enviar WhatsApp al CLIENTE ─────────────────────────────────────────────
 
   const sendWhatsApp = () => {
     if (!document) return
@@ -168,89 +196,299 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
     }
   }
 
+  // ── Notificar venta al DUEÑO por WhatsApp ─────────────────────────────────
+
+  const notifyOwner = () => {
+    if (!document) return
+
+    const docNumber = String(document.number).padStart(5, "0")
+    const now = new Date()
+    const fecha = now.toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+
+    const items = document.items
+      .map((i) => `  • ${i.productName} ${i.productSize} x${i.quantity} — ${formatCurrency(i.subtotal)}`)
+      .join("\n")
+
+    const hasStock = document.items.some((i) => i.source === "STOCK")
+    const hasCatalogo = document.items.some((i) => i.source === "CATALOGO")
+
+    const entrega = hasStock && hasCatalogo
+      ? "Inmediata (stock) / 7-10 días (catálogo)"
+      : hasCatalogo
+      ? "7-10 días hábiles (catálogo)"
+      : "Inmediata (stock)"
+
+    const lines: string[] = [
+      `🔔 *NUEVA VENTA REGISTRADA*`,
+      `━━━━━━━━━━━━━━━━━━━━`,
+      ``,
+      `📄 *Recibo #${docNumber}*`,
+      `📅 ${fecha}`,
+      ``,
+      `👤 *Cliente:* ${document.client.name}`,
+      `📞 *Tel:* ${document.client.phone}`,
+    ]
+
+    if (document.client.address) {
+      lines.push(`📍 *Dir:* ${document.client.address}, ${document.client.city}`)
+    }
+
+    lines.push(
+      ``,
+      `📦 *Productos:*`,
+      items,
+      ``,
+      `━━━━━━━━━━━━━━━━━━━━`,
+    )
+
+    if (document.surcharge > 0) {
+      lines.push(`  Subtotal: ${formatCurrency(document.subtotal)}`)
+      lines.push(`  Recargo (${document.surchargeRate}%): ${formatCurrency(document.surcharge)}`)
+    }
+
+    if (document.shippingCost > 0) {
+      lines.push(`  Envío: ${formatCurrency(document.shippingCost)}`)
+    }
+
+    lines.push(`💰 *TOTAL: ${formatCurrency(document.total)}*`)
+
+    if (document.paymentType) {
+      lines.push(`💳 *Método:* ${document.paymentType}`)
+    }
+
+    if (document.installments && document.installments > 1) {
+      const cuota = Math.round(document.total / document.installments)
+      lines.push(`📊 *Plan:* ${document.installments} cuotas de ${formatCurrency(cuota)}`)
+    }
+
+    if (document.amountPaid && document.amountPaid > 0) {
+      lines.push(`✅ *Pagado:* ${formatCurrency(document.amountPaid)}`)
+
+      if (document.balance && document.balance > 0) {
+        lines.push(`⚠️ *Saldo pendiente:* ${formatCurrency(document.balance)}`)
+      } else {
+        lines.push(`✅ *PAGO COMPLETO*`)
+      }
+    } else {
+      lines.push(`⏳ *Sin pago registrado — A cuenta*`)
+    }
+
+    lines.push(
+      ``,
+      `🚚 *Entrega:* ${entrega}`,
+      `📦 *Envío:* ${document.shippingType}`,
+    )
+
+    if (document.observations) {
+      lines.push(``, `📝 *Obs:* ${document.observations}`)
+    }
+
+    if (document.internalNotes) {
+      lines.push(`🔒 *Nota interna:* ${document.internalNotes}`)
+    }
+
+    lines.push(
+      ``,
+      `━━━━━━━━━━━━━━━━━━━━`,
+      `_${BUSINESS.name}_`,
+    )
+
+    const message = lines.join("\n")
+    const url = generateWhatsAppLink(OWNER_NOTIFICATION_PHONE, message)
+    window.open(url, "_blank")
+  }
+
+  // ── Notificar remito al REPARTIDOR por WhatsApp ─────────────────────────────
+
+  const notifyDelivery = () => {
+    if (!document) return
+
+    const docNumber = String(document.number).padStart(5, "0")
+
+    const items = document.items
+      .map((i, idx) => `  ${idx + 1}. ${i.productName} ${i.productSize} (cant: ${i.quantity})`)
+      .join("\n")
+
+    const addressLine = document.client.address
+      ? `${document.client.address}, ${document.client.city}`
+      : document.client.city || "A COORDINAR"
+
+    const hasStock = document.items.some((i) => i.source === "STOCK")
+    const hasCatalogo = document.items.some((i) => i.source === "CATALOGO")
+
+    const lines: string[] = [
+      `🚚 *ENTREGA PENDIENTE*`,
+      `━━━━━━━━━━━━━━━━━━━━`,
+      ``,
+      `📄 *Recibo #${docNumber}*`,
+      ``,
+      `👤 *Cliente:* ${document.client.name}`,
+      `📞 *Tel:* ${document.client.phone}`,
+      `📍 *Dirección:* ${addressLine}`,
+      ``,
+      `📦 *Productos a entregar:*`,
+      items,
+    ]
+
+    if (hasStock && hasCatalogo) {
+      lines.push(``, `⏱ Algunos productos son de catálogo (7-10 días)`)
+    } else if (hasCatalogo) {
+      lines.push(``, `⏱ Productos de catálogo — confirmar disponibilidad`)
+    }
+
+    lines.push(
+      ``,
+      `🚛 *Envío:* ${document.shippingType}`,
+    )
+
+    // Info de saldo pendiente para que el repartidor sepa si debe cobrar
+    if (document.balance && document.balance > 0) {
+      lines.push(
+        ``,
+        `💰 *COBRAR AL ENTREGAR: ${formatCurrency(document.balance)}*`,
+        `💳 Método: ${document.paymentType || "Consultar"}`,
+      )
+    } else if (document.amountPaid && document.amountPaid > 0) {
+      lines.push(``, `✅ *PAGO COMPLETO — No cobrar*`)
+    } else {
+      lines.push(``, `⚠️ *SIN PAGO — Cobrar total: ${formatCurrency(document.total)}*`)
+    }
+
+    if (document.observations) {
+      lines.push(``, `📝 *Obs:* ${document.observations}`)
+    }
+
+    lines.push(
+      ``,
+      `Confirmar cuando esté entregado. 👍`,
+      ``,
+      `━━━━━━━━━━━━━━━━━━━━`,
+      `_${BUSINESS.name}_`,
+    )
+
+    const message = lines.join("\n")
+    const url = generateWhatsAppLink(DELIVERY_NOTIFICATION_PHONE, message)
+    window.open(url, "_blank")
+  }
+
+  // ── Generar mensaje WhatsApp para CLIENTE ──────────────────────────────────
+
   const generateWhatsAppMessage = () => {
     if (!document) return ""
 
+    // ── REMITO (sin precios, para repartidor) ────────────────────────────────
     if (document.type === "REMITO") {
-      const firstName = document.client.name.split(' ')[0]
       const productList = document.items
-        .map((item, index) =>
-          `${index + 1}. ${item.productName} ${item.productSize} (cantidad: ${item.quantity})`
+        .map((item, i) =>
+          `  ${i + 1}. ${item.productName} ${item.productSize} (cant: ${item.quantity})`
         )
         .join("\n")
+
       const addressLine = document.client.address && document.client.city
         ? `${document.client.address}, ${document.client.city}`
-        : document.client.city || "⚠️ COORDINAR DIRECCIÓN"
+        : document.client.city || "A COORDINAR"
 
-      return `Hola! 👋\n\n🚚 *REMITO N° ${String(document.number).padStart(5, "0")}*\n\nTenemos una entrega para coordinar:\n\n📦 *PRODUCTOS:*\n${productList}\n\n👤 *CLIENTE:*\n${document.client.name}\n📞 ${document.client.phone}\n📍 ${addressLine}\n\n🚛 *${document.shippingType}*${document.observations ? `\n\n📝 *Obs:* ${document.observations}` : ""}\n\n_Remito generado por AZUL COLCHONES_`
+      return [
+        `*REMITO N° ${String(document.number).padStart(5, "0")}*`,
+        ``,
+        `*Productos:*`,
+        productList,
+        ``,
+        `*Cliente:* ${document.client.name}`,
+        `*Tel:* ${document.client.phone}`,
+        `*Direccion:* ${addressLine}`,
+        ``,
+        `*Envio:* ${document.shippingType}`,
+        ...(document.observations ? [`*Obs:* ${document.observations}`] : []),
+        ``,
+        `Confirmar cuando este entregado.`,
+        ``,
+        `_AZUL COLCHONES_`,
+      ].join("\n")
     }
 
-    const firstName = document.client.name.split(' ')[0]
-    const typeLabel = document.type === "PRESUPUESTO" ? "PRESUPUESTO" : "RECIBO"
-    const productList = document.items
-      .map((item) => {
-        const stockBadge = item.source === "STOCK" ? " ✓" : ""
-        return `• ${item.productName} ${item.productSize}${stockBadge}\n  ${item.quantity} x ${formatCurrency(item.unitPrice)} = ${formatCurrency(item.subtotal)}`
-      })
-      .join("\n\n")
+    // ── PRESUPUESTO / RECIBO (con precios, para cliente) ─────────────────────
+    const firstName = document.client.name.split(" ")[0]
+    const typeLabel = document.type === "PRESUPUESTO" ? "Presupuesto" : "Recibo"
 
-    let message = `Hola ${firstName}! 😊\n\n`
-    message += `Te envío tu *${typeLabel} N° ${String(document.number).padStart(5, "0")}*\n\n`
-    message += `${productList}\n\n`
-    message += `━━━━━━━━━━━━━━━━━━━\n`
+    const productList = document.items
+      .map((item) =>
+        `  - ${item.productName} ${item.productSize} x${item.quantity} — ${formatCurrency(item.subtotal)}`
+      )
+      .join("\n")
+
+    const lines: string[] = [
+      `Hola ${firstName}!`,
+      ``,
+      `Te paso tu *${typeLabel} N° ${String(document.number).padStart(5, "0")}*`,
+      ``,
+      productList,
+    ]
 
     if (document.surcharge > 0) {
-      message += `Subtotal: ${formatCurrency(document.subtotal)}\n`
-      message += `Recargo ${document.installments} cuotas: ${formatCurrency(document.surcharge)}\n`
-      message += `━━━━━━━━━━━━━━━━━━━\n`
+      lines.push(
+        ``,
+        `Subtotal: ${formatCurrency(document.subtotal)}`,
+        `Recargo ${document.installments} cuotas: ${formatCurrency(document.surcharge)}`
+      )
     }
 
-    message += `💵 *TOTAL: ${formatCurrency(document.total)}*\n`
+    lines.push(``, `*TOTAL: ${formatCurrency(document.total)}*`)
 
     if (document.type === "RECIBO") {
       if (document.amountPaid && document.amountPaid > 0) {
-        message += `\n✅ *Pagado (${document.paymentType || "Efectivo"}):* ${formatCurrency(document.amountPaid)}\n`
+        lines.push(`Pagado (${document.paymentType || "Efectivo"}): ${formatCurrency(document.amountPaid)}`)
       }
       if (document.balance && document.balance > 0) {
-        message += `⏳ *Saldo Pendiente:* ${formatCurrency(document.balance)}\n`
+        lines.push(`*Saldo pendiente: ${formatCurrency(document.balance)}*`)
       } else if (document.amountPaid && document.amountPaid >= document.total) {
-        message += `\n🎉 *PAGO COMPLETO*\n`
+        lines.push(`*Pago completo*`)
       }
       if (document.installments && document.installments > 1) {
-        const installmentAmount = Math.round(document.total / document.installments)
-        message += `\n💳 *${document.installments} cuotas de ${formatCurrency(installmentAmount)}*\n`
+        const cuota = Math.round(document.total / document.installments)
+        lines.push(`${document.installments} cuotas de ${formatCurrency(cuota)}`)
       }
     }
 
-    message += `\n━━━━━━━━━━━━━━━━━━━\n`
+    lines.push(``)
 
     const hasCatalogo = document.items.some((i) => i.source === "CATALOGO")
     const hasStock = document.items.some((i) => i.source === "STOCK")
 
     if (hasStock && hasCatalogo) {
-      message += `📦 Productos en stock: Entrega inmediata\n`
-      message += `📦 Catálogo: 7-10 días hábiles\n`
+      lines.push(`Entrega: inmediata (stock) / 7-10 dias (catalogo)`)
     } else if (hasCatalogo) {
-      message += `📦 Entrega estimada: 7-10 días hábiles\n`
+      lines.push(`Entrega estimada: 7-10 dias habiles`)
     } else {
-      message += `📦 Disponible para entrega inmediata\n`
+      lines.push(`Disponible para entrega inmediata`)
     }
 
-    message += `🚚 ${document.shippingType}\n`
+    lines.push(`Envio: ${document.shippingType}`)
 
     if (document.type === "PRESUPUESTO" && document.validUntil) {
       const validDate = new Date(document.validUntil)
       const daysValid = Math.ceil((validDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-      message += `⏱️ Válido por ${daysValid} días\n`
+      lines.push(`Valido por ${daysValid} dias`)
     }
 
-    message += `\n✅ Garantía oficial PIERO\n`
-    message += `\nCualquier consulta, estoy a disposición! 👍\n\n`
-    message += `*AZUL COLCHONES*\n`
-    message += `📍 Balerdi 855, Villa María\n`
-    message += `📞 3534096566`
+    lines.push(`Garantia oficial PIERO`)
 
-    return message
+    lines.push(
+      ``,
+      `Cualquier consulta estoy a disposicion.`,
+      ``,
+      `*AZUL COLCHONES*`,
+      `Balerdi 855, Villa Maria`,
+      `Tel: 3534096566`
+    )
+
+    return lines.join("\n")
   }
 
   // ============================================================================
@@ -314,7 +552,6 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
     <>
       {/* ================================================================== */}
       {/* PRINTABLE DOCUMENT - Hidden on screen, shown on print              */}
-      {/* This is a completely separate, clean layout optimized for printing  */}
       {/* ================================================================== */}
       <div className="print-document" id="printable-area">
         {/* MEMBRETE / HEADER FISCAL */}
@@ -525,7 +762,9 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* ══════════════════════════════════════════════════════════════ */}
+            {/* ACTION BUTTONS — Fixed en móvil, inline en desktop            */}
+            {/* ══════════════════════════════════════════════════════════════ */}
             <div className="fixed bottom-0 left-0 right-0 z-40 flex gap-2 border-t border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-900/10 backdrop-blur-xl md:relative md:z-auto md:border-0 md:bg-transparent md:p-0 md:shadow-none">
               <Button
                 variant="outline"
@@ -536,8 +775,23 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
               >
                 <MessageCircle className="mr-1.5 h-3.5 w-3.5 md:mr-2 md:h-4 md:w-4" />
                 <span className="hidden sm:inline">WhatsApp</span>
-                <span className="sm:hidden">Enviar</span>
+                <span className="sm:hidden">Cliente</span>
               </Button>
+
+              {/* ── BOTÓN NOTIFICAR VENTA (solo RECIBO) ─────────────────── */}
+              {document.type === "RECIBO" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={notifyOwner}
+                  className="flex-1 border-emerald-200 bg-emerald-50/50 text-xs font-semibold text-emerald-700 shadow-lg shadow-emerald-500/5 transition-all hover:border-emerald-400 hover:bg-emerald-100 hover:text-emerald-800 md:flex-none md:text-sm"
+                >
+                  <Bell className="mr-1.5 h-3.5 w-3.5 md:mr-2 md:h-4 md:w-4" />
+                  <span className="hidden sm:inline">Notificar Venta</span>
+                  <span className="sm:hidden">Notificar</span>
+                </Button>
+              )}
+
               <Button
                 variant="outline"
                 size="sm"
@@ -864,11 +1118,14 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
                       </Link>
                     )}
                     {document.type === "RECIBO" && document.status === "COMPLETED" && (
-                      <Link href={`/documentos/nuevo?from=${document.id}&tipo=remito`}>
-                        <Button variant="outline" className="w-full border-slate-200 bg-white/50 text-sm font-semibold transition-all hover:scale-105 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 md:text-base">
-                          Generar Remito
-                        </Button>
-                      </Link>
+                      <Button
+                        variant="outline"
+                        className="w-full border-orange-200 bg-orange-50/50 text-sm font-semibold text-orange-700 transition-all hover:scale-105 hover:border-orange-400 hover:bg-orange-100 hover:text-orange-800 md:text-base"
+                        onClick={notifyDelivery}
+                      >
+                        <Truck className="mr-2 h-4 w-4" />
+                        Notificar Remito
+                      </Button>
                     )}
                   </CardContent>
                 </Card>

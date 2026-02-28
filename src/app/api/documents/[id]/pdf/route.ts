@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import PDFDocument from "pdfkit"
 import { Decimal } from "@prisma/client/runtime/library"
-import path from "path"
-import fs from "fs"
-import sizeOf from "image-size"
 
 // ============================================================================
 // Types
@@ -83,9 +80,9 @@ const PAYMENT_LABELS: Record<string, string> = {
 }
 
 const COLORS = {
-  primary: "#1e3a5f",
+  primary: "#1e3a5f",      // Azul oscuro profesional
   primaryLight: "#2d5a8e",
-  accent: "#3b82f6",
+  accent: "#3b82f6",       // Azul accent
   dark: "#1a1a2e",
   medium: "#4a5568",
   secondary: "#718096",
@@ -100,7 +97,7 @@ const COLORS = {
 }
 
 // ============================================================================
-// Business Info
+// Business Info - DATOS FISCALES REALES
 // ============================================================================
 
 const BUSINESS = {
@@ -114,16 +111,6 @@ const BUSINESS = {
   iibb: "215-266214",
   inicioActividad: "01/11/2006",
   condicionIVA: "Responsable Inscripto",
-}
-
-// ============================================================================
-// Logo config
-// ============================================================================
-
-const LOGO = {
-  path: path.join(process.cwd(), "public", "logo.png"),
-  maxWidth: 120,
-  maxHeight: 45,
 }
 
 // ============================================================================
@@ -153,16 +140,6 @@ function toNum(val: Decimal | number | null | undefined): number {
   return typeof val === "number" ? val : Number(val)
 }
 
-/** Devuelve true si el archivo existe y es legible */
-function fileExists(filePath: string): boolean {
-  try {
-    fs.accessSync(filePath, fs.constants.R_OK)
-    return true
-  } catch {
-    return false
-  }
-}
-
 // ============================================================================
 // PDF Generator
 // ============================================================================
@@ -184,6 +161,7 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
     })
 
     pdf.on("data", (chunk) => chunks.push(chunk))
+
     pdf.on("end", () => {
       try {
         resolve(Buffer.concat(chunks))
@@ -191,10 +169,11 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
         reject(error)
       }
     })
+
     pdf.on("error", reject)
 
     try {
-      const pageWidth = pdf.page.width - 70 // 35 margin cada lado
+      const pageWidth = pdf.page.width - 70 // 35 margin each side
       const leftMargin = 35
       const rightEdge = leftMargin + pageWidth
       const isRemito = doc.type === "REMITO"
@@ -206,82 +185,53 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
       // Línea superior azul
       pdf.rect(leftMargin, 35, pageWidth, 3).fill(COLORS.primary)
 
-      // ── LOGO ────────────────────────────────────────────────────────────
-      let logoActualWidth = 0
-
-      if (fileExists(LOGO.path)) {
-        try {
-          const logoBuffer = fs.readFileSync(LOGO.path)
-          const dims = sizeOf(logoBuffer)
-          const srcW = dims.width ?? LOGO.maxWidth
-          const srcH = dims.height ?? LOGO.maxHeight
-
-          const ratio = Math.min(LOGO.maxWidth / srcW, LOGO.maxHeight / srcH)
-          const logoW = Math.round(srcW * ratio)
-          const logoH = Math.round(srcH * ratio)
-          // Centrado vertical dentro de la banda del header (Y 48–93)
-          const logoY = 48 + (LOGO.maxHeight - logoH) / 2
-
-          pdf.image(logoBuffer, leftMargin, logoY, { width: logoW, height: logoH })
-          logoActualWidth = logoW
-        } catch (err) {
-          // Logo corrupto o formato no soportado — fallback a solo texto
-          console.warn("⚠️  No se pudo renderizar el logo:", err)
-          logoActualWidth = 0
-        }
-      } else {
-        console.warn("⚠️  Logo no encontrado en:", LOGO.path)
-      }
-
-      // ── NOMBRE Y DATOS DE EMPRESA ────────────────────────────────────────
-      // Si hay logo se desplaza a la derecha; si no, arranca en leftMargin
-      const GAP = 10
-      const textStartX = logoActualWidth > 0 ? leftMargin + logoActualWidth + GAP : leftMargin
-
       // Nombre empresa
       pdf
         .font("Helvetica-Bold")
         .fontSize(20)
         .fillColor(COLORS.primary)
-        .text(BUSINESS.name, textStartX, 48)
+        .text(BUSINESS.name, leftMargin, 48)
 
       // Tagline
       pdf
         .font("Helvetica")
         .fontSize(8)
         .fillColor(COLORS.secondary)
-        .text(BUSINESS.tagline, textStartX, 70)
+        .text(BUSINESS.tagline, leftMargin, 70)
 
-      // Datos fiscales
+      // Datos fiscales - columna izquierda
       const fiscalY = 84
       pdf.font("Helvetica").fontSize(7.5).fillColor(COLORS.medium)
-      pdf.text(`CUIT: ${BUSINESS.cuit}`, textStartX, fiscalY)
-      pdf.text(`Ing. Brutos: ${BUSINESS.iibb}`, textStartX, fiscalY + 10)
-      pdf.text(`Inicio Act.: ${BUSINESS.inicioActividad}`, textStartX, fiscalY + 20)
+      pdf.text(`CUIT: ${BUSINESS.cuit}`, leftMargin, fiscalY)
+      pdf.text(`Ing. Brutos: ${BUSINESS.iibb}`, leftMargin, fiscalY + 10)
+      pdf.text(`Inicio Act.: ${BUSINESS.inicioActividad}`, leftMargin, fiscalY + 20)
 
-      // Datos de contacto — segunda columna
-      const contactColX = textStartX + 160
-      pdf.text(`${BUSINESS.address}, ${BUSINESS.city}`, contactColX, fiscalY)
-      pdf.text(`Tel: ${BUSINESS.phone}`, contactColX, fiscalY + 10)
-      pdf.text(`${BUSINESS.email}`, contactColX, fiscalY + 20)
+      // Datos de contacto - segunda columna
+      pdf.text(`${BUSINESS.address}, ${BUSINESS.city}`, leftMargin + 160, fiscalY)
+      pdf.text(`Tel: ${BUSINESS.phone}`, leftMargin + 160, fiscalY + 10)
+      pdf.text(`${BUSINESS.email}`, leftMargin + 160, fiscalY + 20)
 
-      // ── RECUADRO TIPO DE DOCUMENTO ───────────────────────────────────────
+      // Tipo de documento y número - derecha
       const docTypeX = rightEdge - 140
 
+      // Recuadro del tipo de documento
       pdf.rect(docTypeX, 44, 140, 55).lineWidth(1.5).strokeColor(COLORS.primary).stroke()
 
+      // Letra del comprobante (X = no fiscal)
       pdf
         .font("Helvetica-Bold")
         .fontSize(22)
         .fillColor(COLORS.primary)
         .text("X", docTypeX + 60, 46, { width: 20, align: "center" })
 
+      // Tipo
       pdf
         .font("Helvetica-Bold")
         .fontSize(9)
         .fillColor(COLORS.primary)
         .text(TYPE_LABELS[doc.type], docTypeX, 68, { width: 140, align: "center" })
 
+      // Número
       pdf
         .font("Helvetica-Bold")
         .fontSize(14)
@@ -293,6 +243,7 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
           { width: 140, align: "center" }
         )
 
+      // Fecha
       pdf
         .font("Helvetica")
         .fontSize(8)
@@ -330,12 +281,14 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
         .strokeColor(COLORS.border)
         .stroke()
 
+      // Nombre
       pdf
         .font("Helvetica-Bold")
         .fontSize(11)
         .fillColor(COLORS.dark)
         .text(doc.client.name, leftMargin, clientY + 18)
 
+      // Info del cliente en línea
       const clientInfoParts: string[] = []
       if (doc.client.dni) clientInfoParts.push(`DNI: ${doc.client.dni}`)
       if (doc.client.phone) clientInfoParts.push(`Tel: ${doc.client.phone}`)
@@ -348,6 +301,7 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
         .fillColor(COLORS.medium)
         .text(clientInfoParts.join("  |  "), leftMargin, clientY + 33)
 
+      // Info adicional del documento (validez, forma de pago)
       let extraInfoY = clientY + 33
       const extraInfoParts: string[] = []
 
@@ -376,6 +330,7 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
 
       const tableStartY = extraInfoY + 22
 
+      // Definir columnas
       const cols = isRemito
         ? {
             producto: { x: leftMargin, w: pageWidth * 0.50 },
@@ -390,26 +345,40 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
             subtotal: { x: leftMargin + pageWidth * 0.80, w: pageWidth * 0.20 },
           }
 
+      // Header de tabla
       pdf.rect(leftMargin, tableStartY, pageWidth, 20).fill(COLORS.primary)
+
       pdf.font("Helvetica-Bold").fontSize(7.5).fillColor(COLORS.white)
 
       pdf.text("PRODUCTO", cols.producto.x + 6, tableStartY + 6, { width: cols.producto.w })
       pdf.text("MEDIDA", cols.medida.x + 4, tableStartY + 6, { width: cols.medida.w })
-      pdf.text("CANT.", cols.cant.x, tableStartY + 6, { width: cols.cant.w, align: "center" })
+      pdf.text("CANT.", cols.cant.x, tableStartY + 6, {
+        width: cols.cant.w,
+        align: "center",
+      })
 
       if (!isRemito) {
-        const c = cols as any
-        pdf.text("P. UNITARIO", c.precio.x, tableStartY + 6, { width: c.precio.w, align: "right" })
-        pdf.text("SUBTOTAL", c.subtotal.x, tableStartY + 6, { width: c.subtotal.w - 6, align: "right" })
+        const colsWithPrices = cols as any
+        pdf.text("P. UNITARIO", colsWithPrices.precio.x, tableStartY + 6, {
+          width: colsWithPrices.precio.w,
+          align: "right",
+        })
+        pdf.text("SUBTOTAL", colsWithPrices.subtotal.x, tableStartY + 6, {
+          width: colsWithPrices.subtotal.w - 6,
+          align: "right",
+        })
       }
 
+      // Filas de productos
       let rowY = tableStartY + 20
       const rowHeight = 26
 
       doc.items.forEach((item, index) => {
+        // Check if we need a new page
         if (rowY + rowHeight > pdf.page.height - 200) {
           pdf.addPage()
           rowY = 50
+          // Re-draw table header on new page
           pdf.rect(leftMargin, rowY, pageWidth, 20).fill(COLORS.primary)
           pdf.font("Helvetica-Bold").fontSize(7.5).fillColor(COLORS.white)
           pdf.text("PRODUCTO", cols.producto.x + 6, rowY + 6, { width: cols.producto.w })
@@ -423,16 +392,21 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
           rowY += 20
         }
 
+        // Alternate row background
         if (index % 2 === 0) {
           pdf.rect(leftMargin, rowY, pageWidth, rowHeight).fill(COLORS.veryLight)
         }
 
+        // Producto
         pdf
           .font("Helvetica-Bold")
           .fontSize(9)
           .fillColor(COLORS.dark)
-          .text(item.productName, cols.producto.x + 6, rowY + 5, { width: cols.producto.w - 10 })
+          .text(item.productName, cols.producto.x + 6, rowY + 5, {
+            width: cols.producto.w - 10,
+          })
 
+        // Badge de stock/catálogo
         const sourceLabel = item.source === "STOCK" ? "Stock" : "Catálogo"
         const sourceColor = item.source === "STOCK" ? COLORS.success : COLORS.accent
         pdf
@@ -441,37 +415,51 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
           .fillColor(sourceColor)
           .text(sourceLabel, cols.producto.x + 6, rowY + 17)
 
+        // Medida
         pdf
           .font("Helvetica")
           .fontSize(9)
           .fillColor(COLORS.dark)
           .text(item.productSize, cols.medida.x + 4, rowY + 9)
 
+        // Cantidad
         pdf
           .font("Helvetica-Bold")
           .fontSize(10)
           .fillColor(COLORS.dark)
-          .text(String(item.quantity), cols.cant.x, rowY + 8, { width: cols.cant.w, align: "center" })
+          .text(String(item.quantity), cols.cant.x, rowY + 8, {
+            width: cols.cant.w,
+            align: "center",
+          })
 
         if (!isRemito) {
           const c = cols as any
 
+          // Precio unitario
           pdf
             .font("Helvetica")
             .fontSize(9)
             .fillColor(COLORS.medium)
-            .text(formatCurrency(item.unitPrice), c.precio.x, rowY + 9, { width: c.precio.w, align: "right" })
+            .text(formatCurrency(item.unitPrice), c.precio.x, rowY + 9, {
+              width: c.precio.w,
+              align: "right",
+            })
 
+          // Subtotal
           pdf
             .font("Helvetica-Bold")
             .fontSize(9)
             .fillColor(COLORS.dark)
-            .text(formatCurrency(item.subtotal), c.subtotal.x, rowY + 9, { width: c.subtotal.w - 6, align: "right" })
+            .text(formatCurrency(item.subtotal), c.subtotal.x, rowY + 9, {
+              width: c.subtotal.w - 6,
+              align: "right",
+            })
         }
 
         rowY += rowHeight
       })
 
+      // Línea final de tabla
       pdf
         .moveTo(leftMargin, rowY)
         .lineTo(rightEdge, rowY)
@@ -480,7 +468,7 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
         .stroke()
 
       // ====================================================================
-      // TOTALES (solo PRESUPUESTO y RECIBO)
+      // TOTALES (solo para PRESUPUESTO y RECIBO)
       // ====================================================================
 
       if (!isRemito) {
@@ -488,6 +476,7 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
         const totalsX = rightEdge - totalsWidth
         let totY = rowY + 12
 
+        // Subtotal
         pdf.font("Helvetica").fontSize(9).fillColor(COLORS.medium)
         pdf.text("Subtotal", totalsX, totY, { width: 100, align: "right" })
         pdf
@@ -499,12 +488,16 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
           })
         totY += 16
 
+        // Recargo
         if (toNum(doc.surcharge) > 0) {
           pdf
             .font("Helvetica")
             .fontSize(9)
             .fillColor(COLORS.medium)
-            .text(`Recargo (${doc.surchargeRate}%)`, totalsX, totY, { width: 100, align: "right" })
+            .text(`Recargo (${doc.surchargeRate}%)`, totalsX, totY, {
+              width: 100,
+              align: "right",
+            })
           pdf
             .fillColor(COLORS.warning)
             .text(formatCurrency(doc.surcharge), totalsX + 105, totY, {
@@ -514,6 +507,7 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
           totY += 16
         }
 
+        // Envío
         if (toNum(doc.shippingCost) > 0) {
           pdf
             .font("Helvetica")
@@ -529,6 +523,7 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
           totY += 16
         }
 
+        // Separador
         totY += 3
         pdf
           .moveTo(totalsX, totY)
@@ -538,7 +533,10 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
           .stroke()
         totY += 8
 
-        pdf.rect(totalsX, totY, totalsWidth, 32).fill(COLORS.primary)
+        // TOTAL - recuadro destacado
+        pdf
+          .rect(totalsX, totY, totalsWidth, 32)
+          .fill(COLORS.primary)
 
         pdf
           .font("Helvetica-Bold")
@@ -556,6 +554,10 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
           })
 
         totY += 40
+
+        // ====================================================================
+        // INFORMACIÓN DE PAGO (solo RECIBO)
+        // ====================================================================
 
         if (doc.type === "RECIBO") {
           const amountPaid = toNum(doc.amountPaid)
@@ -580,17 +582,22 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
               .font("Helvetica-Bold")
               .fontSize(10)
               .fillColor(COLORS.danger)
-              .text(`Saldo pendiente: ${formatCurrency(balance)}`, totalsX, totY, {
-                width: totalsWidth,
-                align: "right",
-              })
+              .text(
+                `Saldo pendiente: ${formatCurrency(balance)}`,
+                totalsX,
+                totY,
+                { width: totalsWidth, align: "right" }
+              )
             totY += 16
           } else if (amountPaid > 0 && balance === 0) {
             pdf
               .font("Helvetica-Bold")
               .fontSize(9)
               .fillColor(COLORS.success)
-              .text("PAGO COMPLETO", totalsX, totY, { width: totalsWidth, align: "right" })
+              .text("PAGO COMPLETO", totalsX, totY, {
+                width: totalsWidth,
+                align: "right",
+              })
             totY += 16
           }
 
@@ -636,20 +643,24 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
       }
 
       // ====================================================================
-      // FIRMAS
+      // FIRMAS - Siempre al final de la última página
       // ====================================================================
 
+      // Calcular posición de firmas - debe estar arriba del footer
       const footerHeight = 40
       const signatureBlockHeight = 85
-      const pageBottom = pdf.page.height - 35
+      const pageBottom = pdf.page.height - 35 // bottom margin
       const signatureY = pageBottom - footerHeight - signatureBlockHeight
 
+      // Si no hay espacio, agregar página
       if (rowY + 50 > signatureY) {
         pdf.addPage()
       }
 
+      // Posicionar firmas
       const sigY = Math.max(signatureY, rowY + 30)
 
+      // Línea separadora pre-firmas
       pdf
         .moveTo(leftMargin, sigY - 8)
         .lineTo(rightEdge, sigY - 8)
@@ -660,9 +671,9 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
       const sigColWidth = pageWidth / 2 - 30
       const sigLeftX = leftMargin + 20
       const sigRightX = leftMargin + pageWidth / 2 + 30
-      const lineY = sigY + 50
 
-      // Firma Vendedor
+      // Firma Vendedor (izquierda)
+      const lineY = sigY + 50
       pdf
         .moveTo(sigLeftX, lineY)
         .lineTo(sigLeftX + sigColWidth, lineY)
@@ -674,7 +685,10 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
         .font("Helvetica-Bold")
         .fontSize(8)
         .fillColor(COLORS.dark)
-        .text("Firma Vendedor", sigLeftX, lineY + 5, { width: sigColWidth, align: "center" })
+        .text("Firma Vendedor", sigLeftX, lineY + 5, {
+          width: sigColWidth,
+          align: "center",
+        })
 
       pdf
         .font("Helvetica")
@@ -685,7 +699,7 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
           align: "center",
         })
 
-      // Firma Cliente (RECIBO y REMITO)
+      // Firma Cliente (derecha) - solo en RECIBO y REMITO
       if (doc.type !== "PRESUPUESTO") {
         pdf
           .moveTo(sigRightX, lineY)
@@ -723,7 +737,7 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
       }
 
       // ====================================================================
-      // FOOTER
+      // FOOTER - Profesional y limpio
       // ====================================================================
 
       const footY = pageBottom - 25
@@ -749,11 +763,14 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
       pdf
         .fontSize(6)
         .fillColor(COLORS.border)
-        .text("Documento no válido como factura", leftMargin, footY + 18, {
-          width: pageWidth,
-          align: "center",
-        })
+        .text(
+          "Documento no válido como factura",
+          leftMargin,
+          footY + 18,
+          { width: pageWidth, align: "center" }
+        )
 
+      // Finalizar PDF
       pdf.end()
     } catch (error) {
       console.error("Error durante la generación del PDF:", error)

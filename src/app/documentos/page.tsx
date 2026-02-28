@@ -231,37 +231,42 @@ function generateClientMessage(doc: Document): string {
   const docNumber = `#${String(doc.number).padStart(5, "0")}`
   const typeLabel = TYPE_CONFIG[doc.type].label
 
-  const validUntilText = doc.type === "PRESUPUESTO" && doc.validUntil
-    ? `\n📅 Válido hasta: ${formatDate(new Date(doc.validUntil))}`
-    : ""
+  const validUntilText =
+    doc.type === "PRESUPUESTO" && doc.validUntil
+      ? `\nValido hasta: ${formatDate(new Date(doc.validUntil))}`
+      : ""
 
-  return `¡Hola ${doc.client.name}! 👋
-
-Te envío tu *${typeLabel} ${docNumber}*
-
-💰 Total: *${formatCurrency(doc.total)}*${validUntilText}
-
-${doc.observations ? `📝 ${doc.observations}\n` : ""}
-Cualquier consulta estoy a tu disposición. ¡Gracias por tu confianza! 🙌
-
-_${CONFIG.businessName}_`
+  return [
+    `Hola ${doc.client.name}!`,
+    ``,
+    `Te paso tu *${typeLabel} ${docNumber}*`,
+    ``,
+    `*Total: ${formatCurrency(doc.total)}*${validUntilText}`,
+    ...(doc.observations ? [``, doc.observations] : []),
+    ``,
+    `Cualquier consulta estoy a disposicion.`,
+    ``,
+    `*${CONFIG.businessName}*`,
+  ].join("\n")
 }
 
 function generateDeliveryMessage(doc: Document): string {
   const docNumber = `#${String(doc.number).padStart(5, "0")}`
   const typeLabel = TYPE_CONFIG[doc.type].label
 
-  return `🚚 *ENTREGA ${typeLabel.toUpperCase()} ${docNumber}*
-
-👤 *Cliente:* ${doc.client.name}
-📞 *Teléfono:* ${doc.client.phone}
-📍 *Dirección:* ${doc.client.address || "Sin dirección"}
-🏙️ *Ciudad:* ${doc.client.city}
-
-🚛 *Envío:* ${doc.shippingType}
-${doc.observations ? `\n📝 *Obs:* ${doc.observations}` : ""}
-
-Por favor confirmar cuando esté entregado ✅`
+  return [
+    `*ENTREGA ${typeLabel.toUpperCase()} ${docNumber}*`,
+    ``,
+    `*Cliente:* ${doc.client.name}`,
+    `*Tel:* ${doc.client.phone}`,
+    `*Direccion:* ${doc.client.address || "Sin direccion"}`,
+    `*Ciudad:* ${doc.client.city}`,
+    ``,
+    `*Envio:* ${doc.shippingType}`,
+    ...(doc.observations ? [`*Obs:* ${doc.observations}`] : []),
+    ``,
+    `Confirmar cuando este entregado.`,
+  ].join("\n")
 }
 
 function sendToDeliveryWhatsApp(doc: Document): void {

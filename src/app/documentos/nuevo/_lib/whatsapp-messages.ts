@@ -7,6 +7,9 @@
 //  • Reutilizables desde lista de documentos (reenvío)
 //  • Mantenimiento centralizado del copy
 //  • Sin dependencias de React (funciones puras)
+//
+// NOTA: Sin emojis Unicode para evitar renderizado roto ("�") en
+// ciertos dispositivos/versiones de WhatsApp. Formato limpio y profesional.
 // ============================================================================
 
 import type { Client, DocumentItem, DocumentType, DocumentCalculations } from "./types"
@@ -39,37 +42,35 @@ export function buildRemitoMessage({
   const productLines = items
     .map((item, i) => {
       const freeTag = item.isFree ? " [BONIFICADO]" : ""
-      return `${i + 1}. ${item.productName} ${item.productSize}${freeTag} (cant: ${item.quantity})`
+      return `  ${i + 1}. ${item.productName} ${item.productSize}${freeTag} (cant: ${item.quantity})`
     })
     .join("\n")
 
   const address =
     client.address && client.city
       ? `${client.address}, ${client.city}`
-      : client.city || "⚠️ COORDINAR DIRECCIÓN"
+      : client.city || "A COORDINAR"
 
-  const parts = [
-    `Hola! 👋`,
+  const lines: string[] = [
+    `*REMITO N° ${padDocNumber(docNumber)}*`,
     ``,
-    `🚚 *REMITO N° ${padDocNumber(docNumber)}*`,
-    ``,
-    `Tenemos una entrega para coordinar:`,
-    ``,
-    `📦 *PRODUCTOS:*`,
+    `*Productos:*`,
     productLines,
     ``,
-    `👤 *CLIENTE:*`,
-    client.name,
-    `📞 ${client.phone}`,
-    `📍 ${address}`,
+    `*Cliente:* ${client.name}`,
+    `*Tel:* ${client.phone}`,
+    `*Direccion:* ${address}`,
     ``,
-    `🚛 *${shippingType}*`,
-    ...(observations ? [``, `📝 *Obs:* ${observations}`] : []),
-    ``,
-    `_Remito generado por ${STORE_INFO.name}_`,
+    `*Envio:* ${shippingType}`,
   ]
 
-  return parts.join("\n")
+  if (observations) {
+    lines.push(`*Obs:* ${observations}`)
+  }
+
+  lines.push(``, `Confirmar cuando este entregado.`, ``, `_${STORE_INFO.name}_`)
+
+  return lines.join("\n")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -99,92 +100,86 @@ export function buildClientMessage({
   fmt: FormatCurrencyFn
 }): string {
   const firstName = client.name.split(" ")[0]
-  const docLabel = type === "PRESUPUESTO" ? "PRESUPUESTO" : "RECIBO"
+  const docLabel = type === "PRESUPUESTO" ? "Presupuesto" : "Recibo"
 
   // ── Lista de productos ─────────────────────────────────────────────────────
   const productLines = items
     .map((item) => {
       if (item.isFree) {
-        // Producto bonificado: mostrar "SIN CARGO" en lugar de precio
-        const stockTag = item.source === "STOCK" ? " ✓" : ""
-        return `• ${item.productName} ${item.productSize}${stockTag}\n  ${item.quantity} x *SIN CARGO* 🎁`
+        return `  - ${item.productName} ${item.productSize} x${item.quantity} — *SIN CARGO*`
       }
-      const stockTag = item.source === "STOCK" ? " ✓" : ""
-      return `• ${item.productName} ${item.productSize}${stockTag}\n  ${item.quantity} x ${fmt(item.unitPrice)} = ${fmt(item.subtotal)}`
+      return `  - ${item.productName} ${item.productSize} x${item.quantity} — ${fmt(item.subtotal)}`
     })
-    .join("\n\n")
+    .join("\n")
 
   const lines: string[] = [
-    `Hola ${firstName}! 😊`,
+    `Hola ${firstName}!`,
     ``,
-    `Te envío tu *${docLabel} N° ${padDocNumber(docNumber)}*`,
+    `Te paso tu *${docLabel} N° ${padDocNumber(docNumber)}*`,
     ``,
     productLines,
-    ``,
-    `━━━━━━━━━━━━━━━━━━━`,
   ]
 
   // ── Detalle de importes ────────────────────────────────────────────────────
-  if (calc.hasFreeItems && !calc.hasOnlyFreeItems) {
-    lines.push(`Subtotal (sin bonificados): ${fmt(calc.subtotal)}`)
+  if (calc.surcharge > 0) {
+    lines.push(
+      ``,
+      `Subtotal: ${fmt(calc.subtotal)}`,
+      `Recargo ${calc.installmentsNumber} cuotas: ${fmt(calc.surcharge)}`
+    )
   }
 
-  if (calc.surcharge > 0) {
-    lines.push(`Subtotal: ${fmt(calc.subtotal)}`)
-    lines.push(`Recargo ${calc.installmentsNumber} cuotas: ${fmt(calc.surcharge)}`)
-    lines.push(`━━━━━━━━━━━━━━━━━━━`)
-  }
+  lines.push(``)
 
   if (calc.hasOnlyFreeItems) {
-    lines.push(`💵 *TOTAL: SIN CARGO* 🎁`)
+    lines.push(`*TOTAL: SIN CARGO*`)
   } else {
-    lines.push(`💵 *TOTAL: ${fmt(calc.total)}*`)
+    lines.push(`*TOTAL: ${fmt(calc.total)}*`)
   }
 
   // ── Info de pago (solo RECIBO) ─────────────────────────────────────────────
   if (type === "RECIBO") {
     if (amountPaid && amountPaid > 0) {
-      lines.push(``, `✅ *Pagado (${paymentType ?? ""}):* ${fmt(amountPaid)}`)
+      lines.push(`Pagado (${paymentType || "Efectivo"}): ${fmt(amountPaid)}`)
     }
 
     if (calc.balance > 0) {
-      lines.push(`⏳ *Saldo Pendiente:* ${fmt(calc.balance)}`)
+      lines.push(`*Saldo pendiente: ${fmt(calc.balance)}*`)
     } else if (calc.isPaidInFull) {
-      lines.push(``, `🎉 *PAGO COMPLETO*`)
+      lines.push(`*Pago completo*`)
     }
 
     if (calc.installmentsNumber > 1) {
-      lines.push(``, `💳 *${calc.installmentsNumber} cuotas de ${fmt(calc.installmentAmount)}*`)
+      lines.push(`${calc.installmentsNumber} cuotas de ${fmt(calc.installmentAmount)}`)
     }
   }
 
-  lines.push(``, `━━━━━━━━━━━━━━━━━━━`)
-
   // ── Info de entrega ────────────────────────────────────────────────────────
+  lines.push(``)
+
   if (calc.hasStockItems && calc.hasCatalogoItems) {
-    lines.push(`📦 En stock: Entrega inmediata`)
-    lines.push(`📦 Catálogo: 7-10 días hábiles`)
+    lines.push(`Entrega: inmediata (stock) / 7-10 dias (catalogo)`)
   } else if (calc.hasCatalogoItems) {
-    lines.push(`📦 Entrega estimada: 7-10 días hábiles`)
+    lines.push(`Entrega estimada: 7-10 dias habiles`)
   } else {
-    lines.push(`📦 Disponible para entrega inmediata`)
+    lines.push(`Disponible para entrega inmediata`)
   }
 
-  lines.push(`🚚 ${shippingType}`)
+  lines.push(`Envio: ${shippingType}`)
 
   if (type === "PRESUPUESTO" && validDays) {
-    lines.push(`⏱️ Válido por ${validDays} días`)
+    lines.push(`Valido por ${validDays} dias`)
   }
+
+  lines.push(`Garantia oficial ${STORE_INFO.brand}`)
 
   lines.push(
     ``,
-    `✅ Garantía oficial ${STORE_INFO.brand}`,
-    ``,
-    `Cualquier consulta, estoy a disposición! 👍`,
+    `Cualquier consulta estoy a disposicion.`,
     ``,
     `*${STORE_INFO.name}*`,
-    `📍 ${STORE_INFO.address}`,
-    `📞 ${STORE_INFO.phone}`
+    `${STORE_INFO.address}`,
+    `Tel: ${STORE_INFO.phone}`
   )
 
   return lines.join("\n")
