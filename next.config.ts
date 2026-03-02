@@ -1,16 +1,20 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Optimizaciones de producción
   poweredByHeader: false,
   
-  // Configuración de Turbopack (requerido en Next.js 16+)
-  turbopack: {
-    // Configuración vacía para usar defaults
-  },
+  turbopack: {},
   
-  // Manejo de módulos externos
-  serverExternalPackages: ["@prisma/client"],
+  serverExternalPackages: ["@prisma/client", "prisma"],
+
+  outputFileTracingExcludes: {
+    '*': [
+      './node_modules/@prisma/engines/**',
+      './node_modules/prisma/build/**',
+      './node_modules/@prisma/engines-version/**',
+      './node_modules/@prisma/get-platform/**',
+    ],
+  },
 };
 
 export default nextConfig;
