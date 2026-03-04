@@ -71,6 +71,7 @@ export const TIPO_EMOJI: Record<TipoProducto, string> = {
 // ============================================================================
 // NOTA: Precios actualizados el 09-02-26 (Lista Piero Exclusivo) + 3%
 // Fórmula aplicada: precioPublico = Math.round(precioListaPDF * 1.03 / 100) * 100
+// Almohadas: -3% aplicado el 04-03-26
 // ============================================================================
 
 // ============================================================================
@@ -84,7 +85,7 @@ const meditareEP: Producto[] = [
     id: 'meditare-ep-80',
     nombre: 'Colchón Piero Meditare EuroPillow',
     tamaño: '190x80 (1 plaza)',
-    precioPublico: 205000,       // 199000 * 1.03
+    precioPublico: 205000,
     precioMercadoLibre: 249900,
     categoria: 'ancla',
     stock: 'disponible',
@@ -95,7 +96,7 @@ const meditareEP: Producto[] = [
     id: 'meditare-ep-90',
     nombre: 'Colchón Piero Meditare EuroPillow',
     tamaño: '190x90 (1 plaza)',
-    precioPublico: 258000,       // 250000 * 1.03
+    precioPublico: 258000,
     precioMercadoLibre: 279900,
     categoria: 'ancla',
     stock: 'disponible',
@@ -106,7 +107,7 @@ const meditareEP: Producto[] = [
     id: 'meditare-ep-100',
     nombre: 'Colchón Piero Meditare EuroPillow',
     tamaño: '190x100 (1 plaza)',
-    precioPublico: 278000,       // 270000 * 1.03
+    precioPublico: 278000,
     precioMercadoLibre: 299900,
     categoria: 'ancla',
     stock: 'disponible',
@@ -117,7 +118,7 @@ const meditareEP: Producto[] = [
     id: 'meditare-ep-130',
     nombre: 'Colchón Piero Meditare EuroPillow',
     tamaño: '190x130 (1½ plaza)',
-    precioPublico: 361000,       // 350000 * 1.03
+    precioPublico: 361000,
     precioMercadoLibre: 379900,
     categoria: 'ancla',
     stock: 'disponible',
@@ -128,7 +129,7 @@ const meditareEP: Producto[] = [
     id: 'meditare-ep-140',
     nombre: 'Colchón Piero Meditare EuroPillow',
     tamaño: '190x140 (2 plazas)',
-    precioPublico: 381000,       // 370000 * 1.03
+    precioPublico: 381000,
     precioMercadoLibre: 399900,
     categoria: 'ancla',
     stock: 'disponible',
@@ -144,7 +145,7 @@ const nirvana: Producto[] = [
     id: 'nirvana-80',
     nombre: 'Colchón Piero Nirvana',
     tamaño: '190x80 (1 plaza)',
-    precioPublico: 350000,       // 340000 * 1.03
+    precioPublico: 350000,
     precioMercadoLibre: 449900,
     categoria: 'ancla',
     stock: 'disponible',
@@ -155,7 +156,7 @@ const nirvana: Producto[] = [
     id: 'nirvana-90',
     nombre: 'Colchón Piero Nirvana',
     tamaño: '190x90 (1 plaza)',
-    precioPublico: 391000,       // 380000 * 1.03
+    precioPublico: 391000,
     precioMercadoLibre: 519900,
     categoria: 'ancla',
     stock: 'disponible',
@@ -166,7 +167,7 @@ const nirvana: Producto[] = [
     id: 'nirvana-100',
     nombre: 'Colchón Piero Nirvana',
     tamaño: '190x100 (1 plaza)',
-    precioPublico: 443000,       // 430000 * 1.03
+    precioPublico: 443000,
     precioMercadoLibre: 589900,
     categoria: 'ancla',
     stock: 'disponible',
@@ -177,7 +178,7 @@ const nirvana: Producto[] = [
     id: 'nirvana-130',
     nombre: 'Colchón Piero Nirvana',
     tamaño: '190x130 (1½ plaza)',
-    precioPublico: 556000,       // 540000 * 1.03
+    precioPublico: 556000,
     precioMercadoLibre: 739900,
     categoria: 'ancla',
     stock: 'disponible',
@@ -188,7 +189,7 @@ const nirvana: Producto[] = [
     id: 'nirvana-140',
     nombre: 'Colchón Piero Nirvana',
     tamaño: '190x140 (2 plazas)',
-    precioPublico: 597000,       // 580000 * 1.03
+    precioPublico: 597000,
     precioMercadoLibre: 709900,
     categoria: 'ancla',
     stock: 'disponible',
@@ -199,7 +200,7 @@ const nirvana: Producto[] = [
     id: 'nirvana-160',
     nombre: 'Colchón Piero Nirvana',
     tamaño: '190x160 (2 plazas)',
-    precioPublico: 752000,       // 730000 * 1.03
+    precioPublico: 752000,
     precioMercadoLibre: 999900,
     categoria: 'ancla',
     stock: 'disponible',
@@ -210,7 +211,7 @@ const nirvana: Producto[] = [
     id: 'nirvana-180',
     nombre: 'Colchón Piero Nirvana',
     tamaño: '200x180 (Queen)',
-    precioPublico: 824000,       // 800000 * 1.03
+    precioPublico: 824000,
     precioMercadoLibre: 1099900,
     categoria: 'ancla',
     stock: 'disponible',
@@ -221,7 +222,7 @@ const nirvana: Producto[] = [
     id: 'nirvana-200',
     nombre: 'Colchón Piero Nirvana',
     tamaño: '200x200 (King)',
-    precioPublico: 896000,       // 870000 * 1.03
+    precioPublico: 896000,
     precioMercadoLibre: 1019900,
     categoria: 'ancla',
     stock: 'disponible',
@@ -237,7 +238,7 @@ const sonnoEP: Producto[] = [
     id: 'sonno-ep-80',
     nombre: 'Colchón Piero Sonno EuroPillow',
     tamaño: '190x80 (1 plaza)',
-    precioPublico: 309000,       // 300000 * 1.03
+    precioPublico: 309000,
     precioMercadoLibre: 339900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -248,7 +249,7 @@ const sonnoEP: Producto[] = [
     id: 'sonno-ep-90',
     nombre: 'Colchón Piero Sonno EuroPillow',
     tamaño: '190x90 (1 plaza)',
-    precioPublico: 340000,       // 330000 * 1.03
+    precioPublico: 340000,
     precioMercadoLibre: 369900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -259,7 +260,7 @@ const sonnoEP: Producto[] = [
     id: 'sonno-ep-100',
     nombre: 'Colchón Piero Sonno EuroPillow',
     tamaño: '190x100 (1 plaza)',
-    precioPublico: 371000,       // 360000 * 1.03
+    precioPublico: 371000,
     precioMercadoLibre: 399900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -270,7 +271,7 @@ const sonnoEP: Producto[] = [
     id: 'sonno-ep-130',
     nombre: 'Colchón Piero Sonno EuroPillow',
     tamaño: '190x130 (1½ plaza)',
-    precioPublico: 464000,       // 450000 * 1.03
+    precioPublico: 464000,
     precioMercadoLibre: 499900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -281,7 +282,7 @@ const sonnoEP: Producto[] = [
     id: 'sonno-ep-140',
     nombre: 'Colchón Piero Sonno EuroPillow',
     tamaño: '190x140 (2 plazas)',
-    precioPublico: 505000,       // 490000 * 1.03
+    precioPublico: 505000,
     precioMercadoLibre: 679900,
     categoria: 'equilibrio',
     destacado: true,
@@ -293,7 +294,7 @@ const sonnoEP: Producto[] = [
     id: 'sonno-ep-160',
     nombre: 'Colchón Piero Sonno EuroPillow',
     tamaño: '190x160 (2 plazas)',
-    precioPublico: 556000,       // 540000 * 1.03
+    precioPublico: 556000,
     precioMercadoLibre: 579900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -309,7 +310,7 @@ const regno: Producto[] = [
     id: 'regno-80',
     nombre: 'Colchón Piero Regno',
     tamaño: '190x80 (1 plaza)',
-    precioPublico: 319000,       // 310000 * 1.03
+    precioPublico: 319000,
     precioMercadoLibre: 409900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -320,7 +321,7 @@ const regno: Producto[] = [
     id: 'regno-90',
     nombre: 'Colchón Piero Regno',
     tamaño: '190x90 (1 plaza)',
-    precioPublico: 350000,       // 340000 * 1.03
+    precioPublico: 350000,
     precioMercadoLibre: 449900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -331,7 +332,7 @@ const regno: Producto[] = [
     id: 'regno-100',
     nombre: 'Colchón Piero Regno',
     tamaño: '190x100 (1 plaza)',
-    precioPublico: 391000,       // 380000 * 1.03
+    precioPublico: 391000,
     categoria: 'equilibrio',
     stock: 'disponible',
     imagen: '/images/regno-100.jpg',
@@ -341,7 +342,7 @@ const regno: Producto[] = [
     id: 'regno-140',
     nombre: 'Colchón Piero Regno',
     tamaño: '190x140 (2 plazas)',
-    precioPublico: 494000,       // 480000 * 1.03
+    precioPublico: 494000,
     precioMercadoLibre: 729900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -352,7 +353,7 @@ const regno: Producto[] = [
     id: 'regno-160',
     nombre: 'Colchón Piero Regno',
     tamaño: '200x160 (Queen)',
-    precioPublico: 587000,       // 570000 * 1.03
+    precioPublico: 587000,
     precioMercadoLibre: 979900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -363,7 +364,7 @@ const regno: Producto[] = [
     id: 'regno-200',
     nombre: 'Colchón Piero Regno',
     tamaño: '200x200 (King)',
-    precioPublico: 720000,       // 699000 * 1.03
+    precioPublico: 720000,
     precioMercadoLibre: 899900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -379,7 +380,7 @@ const regnoPillow: Producto[] = [
     id: 'regno-pillow-140',
     nombre: 'Colchón Piero Regno Pillow Top',
     tamaño: '190x140 (2 plazas)',
-    precioPublico: 618000,       // 600000 * 1.03
+    precioPublico: 618000,
     precioMercadoLibre: 629900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -390,7 +391,7 @@ const regnoPillow: Producto[] = [
     id: 'regno-pillow-160',
     nombre: 'Colchón Piero Regno Pillow Top',
     tamaño: '200x160 (Queen)',
-    precioPublico: 711000,       // 690000 * 1.03
+    precioPublico: 711000,
     precioMercadoLibre: 799900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -401,7 +402,7 @@ const regnoPillow: Producto[] = [
     id: 'regno-pillow-180',
     nombre: 'Colchón Piero Regno Pillow Top',
     tamaño: '200x180 (Queen XL)',
-    precioPublico: 783000,       // 760000 * 1.03
+    precioPublico: 783000,
     precioMercadoLibre: 979900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -412,7 +413,7 @@ const regnoPillow: Producto[] = [
     id: 'regno-pillow-200',
     nombre: 'Colchón Piero Regno Pillow Top',
     tamaño: '200x200 (King)',
-    precioPublico: 865000,       // 840000 * 1.03
+    precioPublico: 865000,
     precioMercadoLibre: 1079900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -428,7 +429,7 @@ const gravita: Producto[] = [
     id: 'gravita-140',
     nombre: 'Colchón Piero Gravita',
     tamaño: '190x140 (2 plazas)',
-    precioPublico: 803000,       // 780000 * 1.03
+    precioPublico: 803000,
     precioMercadoLibre: 999900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -439,7 +440,7 @@ const gravita: Producto[] = [
     id: 'gravita-160',
     nombre: 'Colchón Piero Gravita',
     tamaño: '200x160 (Queen)',
-    precioPublico: 999000,       // 970000 * 1.03
+    precioPublico: 999000,
     precioMercadoLibre: 1109900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -450,7 +451,7 @@ const gravita: Producto[] = [
     id: 'gravita-180',
     nombre: 'Colchón Piero Gravita',
     tamaño: '200x180 (Queen XL)',
-    precioPublico: 1082000,      // 1050000 * 1.03
+    precioPublico: 1082000,
     precioMercadoLibre: 1299900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -461,7 +462,7 @@ const gravita: Producto[] = [
     id: 'gravita-200',
     nombre: 'Colchón Piero Gravita',
     tamaño: '200x200 (King)',
-    precioPublico: 1133000,      // 1100000 * 1.03
+    precioPublico: 1133000,
     precioMercadoLibre: 1319900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -477,7 +478,7 @@ const namaste: Producto[] = [
     id: 'namaste-80',
     nombre: 'Colchón Piero Namaste',
     tamaño: '190x80 (1 plaza)',
-    precioPublico: 278000,       // 270000 * 1.03
+    precioPublico: 278000,
     categoria: 'equilibrio',
     stock: 'disponible',
     imagen: '/images/namaste-80.jpg',
@@ -487,7 +488,7 @@ const namaste: Producto[] = [
     id: 'namaste-90',
     nombre: 'Colchón Piero Namaste',
     tamaño: '190x90 (1 plaza)',
-    precioPublico: 309000,       // 300000 * 1.03
+    precioPublico: 309000,
     categoria: 'equilibrio',
     stock: 'disponible',
     imagen: '/images/namaste-90.jpg',
@@ -497,7 +498,7 @@ const namaste: Producto[] = [
     id: 'namaste-100',
     nombre: 'Colchón Piero Namaste',
     tamaño: '190x100 (1 plaza)',
-    precioPublico: 350000,       // 340000 * 1.03
+    precioPublico: 350000,
     categoria: 'equilibrio',
     stock: 'disponible',
     imagen: '/images/namaste-100.jpg',
@@ -507,7 +508,7 @@ const namaste: Producto[] = [
     id: 'namaste-140',
     nombre: 'Colchón Piero Namaste',
     tamaño: '190x140 (2 plazas)',
-    precioPublico: 464000,       // 450000 * 1.03
+    precioPublico: 464000,
     precioMercadoLibre: 449900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -518,7 +519,7 @@ const namaste: Producto[] = [
     id: 'namaste-160',
     nombre: 'Colchón Piero Namaste',
     tamaño: '200x160 (Queen)',
-    precioPublico: 587000,       // 570000 * 1.03
+    precioPublico: 587000,
     precioMercadoLibre: 579900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -529,7 +530,7 @@ const namaste: Producto[] = [
     id: 'namaste-200',
     nombre: 'Colchón Piero Namaste',
     tamaño: '200x200 (King)',
-    precioPublico: 700000,       // 680000 * 1.03
+    precioPublico: 700000,
     precioMercadoLibre: 699900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -545,7 +546,7 @@ const namastePillow: Producto[] = [
     id: 'namaste-pillow-140',
     nombre: 'Colchón Piero Namaste Pillow Top',
     tamaño: '190x140 (2 plazas)',
-    precioPublico: 587000,       // 570000 * 1.03
+    precioPublico: 587000,
     precioMercadoLibre: 579900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -556,7 +557,7 @@ const namastePillow: Producto[] = [
     id: 'namaste-pillow-160',
     nombre: 'Colchón Piero Namaste Pillow Top',
     tamaño: '200x160 (Queen)',
-    precioPublico: 670000,       // 650000 * 1.03
+    precioPublico: 670000,
     precioMercadoLibre: 659900,
     categoria: 'equilibrio',
     stock: 'disponible',
@@ -572,7 +573,7 @@ const montreaux: Producto[] = [
     id: 'montreaux-140',
     nombre: 'Colchón Piero Montreaux',
     tamaño: '190x140 (2 plazas)',
-    precioPublico: 876000,       // 850000 * 1.03
+    precioPublico: 876000,
     precioMercadoLibre: 1369900,
     categoria: 'premium',
     stock: 'disponible',
@@ -583,7 +584,7 @@ const montreaux: Producto[] = [
     id: 'montreaux-160',
     nombre: 'Colchón Piero Montreaux',
     tamaño: '200x160 (Queen)',
-    precioPublico: 1082000,      // 1050000 * 1.03
+    precioPublico: 1082000,
     precioMercadoLibre: 1699900,
     categoria: 'premium',
     stock: 'disponible',
@@ -594,7 +595,7 @@ const montreaux: Producto[] = [
     id: 'montreaux-180',
     nombre: 'Colchón Piero Montreaux',
     tamaño: '200x180 (Queen XL)',
-    precioPublico: 1185000,      // 1150000 * 1.03
+    precioPublico: 1185000,
     categoria: 'premium',
     stock: 'disponible',
     imagen: '/images/montreaux-180.jpg',
@@ -604,7 +605,7 @@ const montreaux: Producto[] = [
     id: 'montreaux-200',
     nombre: 'Colchón Piero Montreaux',
     tamaño: '200x200 (King)',
-    precioPublico: 1236000,      // 1200000 * 1.03
+    precioPublico: 1236000,
     precioMercadoLibre: 1929900,
     categoria: 'premium',
     stock: 'disponible',
@@ -620,7 +621,7 @@ const montreauxPillow: Producto[] = [
     id: 'montreaux-pillow-140',
     nombre: 'Colchón Piero Montreaux Pillow Top',
     tamaño: '190x140 (2 plazas)',
-    precioPublico: 1082000,      // 1050000 * 1.03
+    precioPublico: 1082000,
     precioMercadoLibre: 1529900,
     categoria: 'premium',
     stock: 'disponible',
@@ -631,7 +632,7 @@ const montreauxPillow: Producto[] = [
     id: 'montreaux-pillow-160',
     nombre: 'Colchón Piero Montreaux Pillow Top',
     tamaño: '200x160 (Queen)',
-    precioPublico: 1288000,      // 1250000 * 1.03
+    precioPublico: 1288000,
     precioMercadoLibre: 2079900,
     categoria: 'premium',
     destacado: true,
@@ -643,7 +644,7 @@ const montreauxPillow: Producto[] = [
     id: 'montreaux-pillow-180',
     nombre: 'Colchón Piero Montreaux Pillow Top',
     tamaño: '200x180 (Queen XL)',
-    precioPublico: 1391000,      // 1350000 * 1.03
+    precioPublico: 1391000,
     precioMercadoLibre: 2289900,
     categoria: 'premium',
     stock: 'disponible',
@@ -654,7 +655,7 @@ const montreauxPillow: Producto[] = [
     id: 'montreaux-pillow-200',
     nombre: 'Colchón Piero Montreaux Pillow Top',
     tamaño: '200x200 (King)',
-    precioPublico: 1494000,      // 1450000 * 1.03
+    precioPublico: 1494000,
     precioMercadoLibre: 2679900,
     categoria: 'premium',
     stock: 'disponible',
@@ -670,7 +671,7 @@ const dreamFitPocket: Producto[] = [
     id: 'dreamfit-pocket-140',
     nombre: 'Colchón Piero Dream Fit Pocket',
     tamaño: '190x140 (2 plazas)',
-    precioPublico: 1751000,      // 1700000 * 1.03
+    precioPublico: 1751000,
     precioMercadoLibre: 2099900,
     categoria: 'premium',
     stock: 'consultar',
@@ -681,7 +682,7 @@ const dreamFitPocket: Producto[] = [
     id: 'dreamfit-pocket-160',
     nombre: 'Colchón Piero Dream Fit Pocket',
     tamaño: '200x160 (Queen)',
-    precioPublico: 2060000,      // 2000000 * 1.03
+    precioPublico: 2060000,
     precioMercadoLibre: 2399900,
     categoria: 'premium',
     stock: 'consultar',
@@ -692,7 +693,7 @@ const dreamFitPocket: Producto[] = [
     id: 'dreamfit-pocket-200',
     nombre: 'Colchón Piero Dream Fit Pocket',
     tamaño: '200x200 (King)',
-    precioPublico: 2266000,      // 2200000 * 1.03
+    precioPublico: 2266000,
     precioMercadoLibre: 2749900,
     categoria: 'premium',
     stock: 'consultar',
@@ -708,7 +709,7 @@ const dreamFitFoam: Producto[] = [
     id: 'dreamfit-foam-140',
     nombre: 'Colchón Piero Dream Fit Foam',
     tamaño: '190x140x32 (2 plazas)',
-    precioPublico: 1607000,      // 1560000 * 1.03
+    precioPublico: 1607000,
     categoria: 'premium',
     stock: 'consultar',
     imagen: '/images/dreamfit-foam-140.jpg',
@@ -718,7 +719,7 @@ const dreamFitFoam: Producto[] = [
     id: 'dreamfit-foam-160',
     nombre: 'Colchón Piero Dream Fit Foam',
     tamaño: '200x160x32 (Queen)',
-    precioPublico: 1875000,      // 1820000 * 1.03
+    precioPublico: 1875000,
     categoria: 'premium',
     stock: 'consultar',
     imagen: '/images/dreamfit-foam-160.jpg',
@@ -728,7 +729,7 @@ const dreamFitFoam: Producto[] = [
     id: 'dreamfit-foam-200',
     nombre: 'Colchón Piero Dream Fit Foam',
     tamaño: '200x200x32 (King)',
-    precioPublico: 2112000,      // 2050000 * 1.03
+    precioPublico: 2112000,
     categoria: 'premium',
     stock: 'consultar',
     imagen: '/images/dreamfit-foam-200.jpg',
@@ -737,7 +738,6 @@ const dreamFitFoam: Producto[] = [
 ]
 
 // ========== SOMMIERS ==========
-// SIN CAMBIOS - precios ya coincidían con PDF
 const sommiers: Producto[] = [
   // DREAM FIT
   {
@@ -770,7 +770,6 @@ const sommiers: Producto[] = [
     imagen: '/images/sommier-dreamfit-200.jpg',
     tipo: 'sommier'
   },
-
   // BROWN
   {
     id: 'sommier-brown-80',
@@ -852,7 +851,6 @@ const sommiers: Producto[] = [
     imagen: '/images/sommier-brown-200.jpg',
     tipo: 'sommier'
   },
-
   // GREY
   {
     id: 'sommier-grey-80',
@@ -924,7 +922,6 @@ const sommiers: Producto[] = [
     imagen: '/images/sommier-grey-200.jpg',
     tipo: 'sommier'
   },
-
   // SOGNARE
   {
     id: 'sommier-sognare-80',
@@ -986,7 +983,6 @@ const sommiers: Producto[] = [
     imagen: '/images/sommier-sognare-160.jpg',
     tipo: 'sommier'
   },
-
   // EXCLUSIVO
   {
     id: 'sommier-exclusivo-140',
@@ -1042,7 +1038,7 @@ const accesorios: Producto[] = [
     id: 'protector-80',
     nombre: 'Cubre Colchon Procol (4 elásticos)',
     tamaño: '190x80 cm',
-    precioPublico: 18000,        // 17000 * 1.03
+    precioPublico: 18000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'protector',
@@ -1052,7 +1048,7 @@ const accesorios: Producto[] = [
     id: 'protector-90',
     nombre: 'Cubre Colchon Procol (4 elásticos)',
     tamaño: '190x90 cm',
-    precioPublico: 19000,        // 18000 * 1.03
+    precioPublico: 19000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'protector',
@@ -1062,7 +1058,7 @@ const accesorios: Producto[] = [
     id: 'protector-100',
     nombre: 'Cubre Colchon Procol (4 elásticos)',
     tamaño: '190x100 cm',
-    precioPublico: 20000,        // 19000 * 1.03
+    precioPublico: 20000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'protector',
@@ -1072,7 +1068,7 @@ const accesorios: Producto[] = [
     id: 'protector-140',
     nombre: 'Cubre Colchon Procol (4 elásticos)',
     tamaño: '190x140 cm',
-    precioPublico: 24000,        // 23000 * 1.03
+    precioPublico: 24000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'protector',
@@ -1082,7 +1078,7 @@ const accesorios: Producto[] = [
     id: 'protector-160',
     nombre: 'Cubre Colchon Procol (4 elásticos)',
     tamaño: '200x160 cm (Queen)',
-    precioPublico: 29000,        // 28000 * 1.03
+    precioPublico: 29000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'protector',
@@ -1092,7 +1088,7 @@ const accesorios: Producto[] = [
     id: 'protector-180',
     nombre: 'Cubre Colchon Procol (4 elásticos)',
     tamaño: '200x180 cm',
-    precioPublico: 31000,        // 30000 * 1.03
+    precioPublico: 31000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'protector',
@@ -1102,7 +1098,7 @@ const accesorios: Producto[] = [
     id: 'protector-200',
     nombre: 'Cubre Colchon Procol (4 elásticos)',
     tamaño: '200x200 cm (King)',
-    precioPublico: 34000,        // 33000 * 1.03
+    precioPublico: 34000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'protector',
@@ -1115,7 +1111,7 @@ const accesorios: Producto[] = [
     id: 'protector-lateral-80',
     nombre: 'Cubre Colchon Lateral',
     tamaño: '190x80 cm',
-    precioPublico: 32000,        // 31000 * 1.03
+    precioPublico: 32000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'protector',
@@ -1125,7 +1121,7 @@ const accesorios: Producto[] = [
     id: 'protector-lateral-90',
     nombre: 'Cubre Colchon Lateral',
     tamaño: '190x90 cm',
-    precioPublico: 33000,        // 32000 * 1.03
+    precioPublico: 33000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'protector',
@@ -1135,7 +1131,7 @@ const accesorios: Producto[] = [
     id: 'protector-lateral-100',
     nombre: 'Cubre Colchon Lateral',
     tamaño: '190x100 cm',
-    precioPublico: 34000,        // 33000 * 1.03
+    precioPublico: 34000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'protector',
@@ -1145,7 +1141,7 @@ const accesorios: Producto[] = [
     id: 'protector-lateral-140',
     nombre: 'Cubre Colchon Lateral',
     tamaño: '190x140 cm',
-    precioPublico: 40000,        // 39000 * 1.03
+    precioPublico: 40000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'protector',
@@ -1155,7 +1151,7 @@ const accesorios: Producto[] = [
     id: 'protector-lateral-160',
     nombre: 'Cubre Colchon Lateral',
     tamaño: '200x160 cm (Queen)',
-    precioPublico: 62000,        // 60000 * 1.03
+    precioPublico: 62000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'protector',
@@ -1165,7 +1161,7 @@ const accesorios: Producto[] = [
     id: 'protector-lateral-180',
     nombre: 'Cubre Colchon Lateral',
     tamaño: '200x180 cm',
-    precioPublico: 68000,        // 66000 * 1.03
+    precioPublico: 68000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'protector',
@@ -1175,7 +1171,7 @@ const accesorios: Producto[] = [
     id: 'protector-lateral-200',
     nombre: 'Cubre Colchon Lateral',
     tamaño: '200x200 cm (King)',
-    precioPublico: 80000,        // 78000 * 1.03
+    precioPublico: 80000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'protector',
@@ -1183,14 +1179,15 @@ const accesorios: Producto[] = [
   },
 
   // ========== ALMOHADAS ==========
-  // SIN CAMBIOS - precios ya coincidían con PDF
+  // Precios originales +3% lista, luego -3% ajuste 04-03-26
+  // Fórmula: Math.round(precioOriginal * 0.97 / 1000) * 1000
 
   // Visco Dream Fit Clásica
   {
     id: 'almohada-visco-clasica-62',
     nombre: 'Almohada Piero Visco Dream Fit Clásica',
     tamaño: '62x40 cm',
-    precioPublico: 120000,
+    precioPublico: 116000,       // 120000 * 0.97 → 116400 → 116000
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'almohada',
@@ -1212,7 +1209,7 @@ const accesorios: Producto[] = [
     id: 'almohada-visco-cervical-57',
     nombre: 'Almohada Piero Visco Dream Fit Cervical',
     tamaño: '57x37 cm',
-    precioPublico: 120000,
+    precioPublico: 116000,       // 120000 * 0.97 → 116000
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'almohada',
@@ -1224,7 +1221,7 @@ const accesorios: Producto[] = [
     id: 'almohada-visco-tech-70',
     nombre: 'Almohada Piero Visco Dream Tech',
     tamaño: '70x40 cm',
-    precioPublico: 115000,
+    precioPublico: 112000,       // 115000 * 0.97 → 111550 → 112000
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'almohada',
@@ -1236,7 +1233,7 @@ const accesorios: Producto[] = [
     id: 'almohada-micro-rollo-70',
     nombre: 'Almohada Piero Micro Max Tech Rollo',
     tamaño: '70x50 cm',
-    precioPublico: 85000,
+    precioPublico: 82000,        // 85000 * 0.97 → 82450 → 82000
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'almohada',
@@ -1246,7 +1243,7 @@ const accesorios: Producto[] = [
     id: 'almohada-micro-rollo-80',
     nombre: 'Almohada Piero Micro Max Tech Rollo',
     tamaño: '80x50 cm',
-    precioPublico: 90000,
+    precioPublico: 87000,        // 90000 * 0.97 → 87300 → 87000
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'almohada',
@@ -1256,7 +1253,7 @@ const accesorios: Producto[] = [
     id: 'almohada-micro-rollo-90',
     nombre: 'Almohada Piero Micro Max Tech Rollo',
     tamaño: '90x50 cm',
-    precioPublico: 95000,
+    precioPublico: 92000,        // 95000 * 0.97 → 92150 → 92000
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'almohada',
@@ -1268,7 +1265,7 @@ const accesorios: Producto[] = [
     id: 'almohada-fibra-plus-70',
     nombre: 'Almohada Piero Fibra Smart Tech Plus',
     tamaño: '70x50 cm',
-    precioPublico: 65000,
+    precioPublico: 63000,        // 65000 * 0.97 → 63050 → 63000
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'almohada',
@@ -1278,7 +1275,7 @@ const accesorios: Producto[] = [
     id: 'almohada-fibra-plus-80',
     nombre: 'Almohada Piero Fibra Smart Tech Plus',
     tamaño: '80x50 cm',
-    precioPublico: 67000,
+    precioPublico: 65000,        // 67000 * 0.97 → 64990 → 65000
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'almohada',
@@ -1290,7 +1287,7 @@ const accesorios: Producto[] = [
     id: 'almohada-micro-nucleo-70',
     nombre: 'Almohada Piero Micro Max Tech Núcleo',
     tamaño: '70x40 cm',
-    precioPublico: 105000,
+    precioPublico: 102000,       // 105000 * 0.97 → 101850 → 102000
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'almohada',
@@ -1302,7 +1299,7 @@ const accesorios: Producto[] = [
     id: 'almohada-fibra-confort-70',
     nombre: 'Almohada Piero Fibra Smart Tech Confort',
     tamaño: '70x40 cm',
-    precioPublico: 60000,
+    precioPublico: 58000,        // 60000 * 0.97 → 58200 → 58000
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'almohada',
@@ -1312,7 +1309,7 @@ const accesorios: Producto[] = [
     id: 'almohada-fibra-confort-80',
     nombre: 'Almohada Piero Fibra Smart Tech Confort',
     tamaño: '80x40 cm',
-    precioPublico: 60000,
+    precioPublico: 58000,        // 60000 * 0.97 → 58200 → 58000
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'almohada',
@@ -1325,7 +1322,7 @@ const accesorios: Producto[] = [
     id: 'sabanas-100',
     nombre: 'Sábanas Piero Classic Lisa Percal 144 Hilos',
     tamaño: 'Twin (hasta 100 cm)',
-    precioPublico: 95000,        // 92000 * 1.03
+    precioPublico: 95000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'sabanas',
@@ -1335,7 +1332,7 @@ const accesorios: Producto[] = [
     id: 'sabanas-140',
     nombre: 'Sábanas Piero Classic Lisa Percal 144 Hilos',
     tamaño: '140x190 cm (Full)',
-    precioPublico: 112000,       // 109000 * 1.03
+    precioPublico: 112000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'sabanas',
@@ -1345,7 +1342,7 @@ const accesorios: Producto[] = [
     id: 'sabanas-160',
     nombre: 'Sábanas Piero Classic Lisa Percal 144 Hilos',
     tamaño: '160x200 cm (Queen)',
-    precioPublico: 122000,       // 118000 * 1.03
+    precioPublico: 122000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'sabanas',
@@ -1355,7 +1352,7 @@ const accesorios: Producto[] = [
     id: 'sabanas-200',
     nombre: 'Sábanas Piero Classic Lisa Percal 144 Hilos',
     tamaño: '200x200 cm (King)',
-    precioPublico: 139000,       // 135000 * 1.03
+    precioPublico: 139000,
     categoria: 'accesorio',
     stock: 'disponible',
     tipo: 'sabanas',

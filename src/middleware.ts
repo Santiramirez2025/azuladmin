@@ -14,7 +14,7 @@ export async function middleware(request: NextRequest) {
   if (token) {
     try {
       const secret = new TextEncoder().encode(
-        process.env.AUTH_SECRET || "default-secret-change-this"
+        process.env.AUTH_SECRET || "nuevo-default-2026"
       )
       await jwtVerify(token, secret)
       
