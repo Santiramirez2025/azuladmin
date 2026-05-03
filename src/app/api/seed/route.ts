@@ -1,8 +1,29 @@
 // app/api/seed/route.ts
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { timingSafeEqualStrings } from "@/lib/auth"
 
-export async function POST() {
+export const runtime = "nodejs"
+
+function authorize(request: NextRequest): NextResponse | null {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DESTRUCTIVE_OPS !== "true") {
+    return NextResponse.json({ error: "Endpoint deshabilitado en producción" }, { status: 403 })
+  }
+  const expected = process.env.ADMIN_SETUP_SECRET
+  if (!expected) {
+    return NextResponse.json({ error: "ADMIN_SETUP_SECRET no configurado" }, { status: 500 })
+  }
+  const provided = request.headers.get("x-admin-secret") ?? ""
+  if (!timingSafeEqualStrings(provided, expected)) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+  return null
+}
+
+export async function POST(request: NextRequest) {
+  const denied = authorize(request)
+  if (denied) return denied
+
   try {
     // Limpiar datos existentes
     await prisma.productVariant.deleteMany()

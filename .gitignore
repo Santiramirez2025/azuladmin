@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -40,3 +41,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+
+# editor / OS
+.idea/
+.vscode/
+Thumbs.db
+
+# prisma backups (numbered duplicates con espacios)
+schema (*).prisma

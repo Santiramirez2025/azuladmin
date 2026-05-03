@@ -2,46 +2,63 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { jwtVerify } from "jose"
 
+function getSecret(): Uint8Array | null {
+  const secret = process.env.AUTH_SECRET
+  if (
+    !secret ||
+    secret.length < 32 ||
+    secret.startsWith("genera_un_secret") ||
+    secret === "default-secret-change-this" ||
+    secret === "nuevo-default-2026"
+  ) {
+    return null
+  }
+  return new TextEncoder().encode(secret)
+}
+
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  const isLoginPath = pathname.startsWith("/login")
   const token = request.cookies.get("auth-token")?.value
 
-  // Si no hay token y no está en /login, redirigir a login
-  if (!token && !request.nextUrl.pathname.startsWith("/login")) {
+  if (!token) {
+    if (isLoginPath) return NextResponse.next()
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
-  // Si hay token, verificarlo
-  if (token) {
-    try {
-      const secret = new TextEncoder().encode(
-        process.env.AUTH_SECRET || "nuevo-default-2026"
-      )
-      await jwtVerify(token, secret)
-      
-      // Si está en /login y tiene token válido, redirigir al inicio
-      if (request.nextUrl.pathname.startsWith("/login")) {
-        return NextResponse.redirect(new URL("/", request.url))
-      }
-    } catch (error) {
-      // Token inválido, eliminar cookie y redirigir a login
-      const response = NextResponse.redirect(new URL("/login", request.url))
-      response.cookies.delete("auth-token")
-      return response
-    }
+  const secret = getSecret()
+  if (!secret) {
+    console.error("AUTH_SECRET no configurado o inseguro")
+    const response = isLoginPath
+      ? NextResponse.next()
+      : NextResponse.redirect(new URL("/login", request.url))
+    response.cookies.delete("auth-token")
+    return response
   }
 
-  return NextResponse.next()
+  try {
+    const { payload } = await jwtVerify(token, secret, {
+      algorithms: ["HS256"],
+    })
+
+    if (typeof payload.exp !== "number" || payload.exp * 1000 <= Date.now()) {
+      throw new Error("Token expirado")
+    }
+
+    if (isLoginPath) {
+      return NextResponse.redirect(new URL("/", request.url))
+    }
+
+    return NextResponse.next()
+  } catch {
+    const response = isLoginPath
+      ? NextResponse.next()
+      : NextResponse.redirect(new URL("/login", request.url))
+    response.cookies.delete("auth-token")
+    return response
+  }
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Proteger todas las rutas excepto:
-     * - api/auth (rutas de autenticación)
-     * - _next/static (archivos estáticos)
-     * - _next/image (optimización de imágenes)
-     * - favicon.ico
-     */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
-  ],
+  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
 }
