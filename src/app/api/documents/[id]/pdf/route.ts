@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import PDFDocument from "pdfkit"
 import { Decimal } from "@prisma/client/runtime/library"
+import {
+  errorResponse,
+  handleUnknownError,
+  isAuthError,
+  requireAdmin,
+} from "@/lib/api"
+
+export const runtime = "nodejs"
+
+type ColDef = { x: number; w: number }
+type ColsBase = { producto: ColDef; medida: ColDef; cant: ColDef }
+type ColsFull = ColsBase & { precio: ColDef; subtotal: ColDef }
 
 // ============================================================================
 // Types
@@ -331,7 +343,7 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
       const tableStartY = extraInfoY + 22
 
       // Definir columnas
-      const cols = isRemito
+      const cols: ColsBase | ColsFull = isRemito
         ? {
             producto: { x: leftMargin, w: pageWidth * 0.50 },
             medida: { x: leftMargin + pageWidth * 0.50, w: pageWidth * 0.25 },
@@ -358,7 +370,7 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
       })
 
       if (!isRemito) {
-        const colsWithPrices = cols as any
+        const colsWithPrices = cols as ColsFull
         pdf.text("P. UNITARIO", colsWithPrices.precio.x, tableStartY + 6, {
           width: colsWithPrices.precio.w,
           align: "right",
@@ -385,7 +397,7 @@ async function generatePDF(doc: DocumentData): Promise<Buffer> {
           pdf.text("MEDIDA", cols.medida.x + 4, rowY + 6, { width: cols.medida.w })
           pdf.text("CANT.", cols.cant.x, rowY + 6, { width: cols.cant.w, align: "center" })
           if (!isRemito) {
-            const c = cols as any
+            const c = cols as ColsFull
             pdf.text("P. UNITARIO", c.precio.x, rowY + 6, { width: c.precio.w, align: "right" })
             pdf.text("SUBTOTAL", c.subtotal.x, rowY + 6, { width: c.subtotal.w - 6, align: "right" })
           }
@@ -788,8 +800,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request)
+  if (isAuthError(auth)) return auth
+
   try {
     const { id } = await params
+    if (!id) return errorResponse(400, "ID de documento inválido")
 
     const document = await prisma.document.findUnique({
       where: { id },
@@ -808,12 +824,7 @@ export async function GET(
       },
     })
 
-    if (!document) {
-      return NextResponse.json(
-        { error: "Documento no encontrado" },
-        { status: 404 }
-      )
-    }
+    if (!document) return errorResponse(404, "Documento no encontrado")
 
     const pdfBuffer = await generatePDF(document as unknown as DocumentData)
 
@@ -829,13 +840,6 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error("Error generating PDF:", error)
-    return NextResponse.json(
-      {
-        error: "Error al generar PDF",
-        details: error instanceof Error ? error.message : "Error desconocido",
-      },
-      { status: 500 }
-    )
+    return handleUnknownError("documents.[id].pdf.GET", error)
   }
 }

@@ -1,18 +1,30 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import prisma from "@/lib/prisma"
+import {
+  handleUnknownError,
+  isAuthError,
+  requireAdmin,
+} from "@/lib/api"
+
+export const runtime = "nodejs"
+
+const MAX_LIMIT = 500
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if (isAuthError(auth)) return auth
+
   try {
     const { searchParams } = new URL(request.url)
-    const search = searchParams.get("search") || ""
+    const search = searchParams.get("search")?.trim() || ""
     const categoryId = searchParams.get("categoryId")
     const source = searchParams.get("source")
+    const limitRaw = parseInt(searchParams.get("limit") || "200", 10)
+    const limit = Math.min(MAX_LIMIT, Math.max(1, isNaN(limitRaw) ? 200 : limitRaw))
 
-    const where: any = {
-      isActive: true,
-    }
+    const where: Prisma.ProductWhereInput = { isActive: true }
 
-    // Filtro de búsqueda
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
@@ -20,53 +32,25 @@ export async function GET(request: NextRequest) {
         { brand: { contains: search, mode: "insensitive" } },
       ]
     }
-
-    // Filtro por categoría
     if (categoryId && categoryId !== "all") {
       where.categoryId = categoryId
     }
-
-    // Filtro por source (STOCK o CATALOGO)
-    if (source && source !== "all") {
-      where.variants = {
-        some: {
-          source: source,
-        },
-      }
+    if (source === "STOCK" || source === "CATALOGO") {
+      where.variants = { some: { source } }
     }
 
     const products = await prisma.product.findMany({
       where,
+      take: limit,
       include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        variants: {
-          where: {
-            isActive: true,
-          },
-          orderBy: {
-            size: "asc",
-          },
-        },
+        category: { select: { id: true, name: true } },
+        variants: { where: { isActive: true }, orderBy: { size: "asc" } },
       },
-      orderBy: {
-        name: "asc",
-      },
+      orderBy: { name: "asc" },
     })
 
-    return NextResponse.json({
-      items: products,
-      total: products.length,
-    })
+    return NextResponse.json({ items: products, total: products.length, limit })
   } catch (error) {
-    console.error("Error fetching products:", error)
-    return NextResponse.json(
-      { error: "Error al cargar productos" },
-      { status: 500 }
-    )
+    return handleUnknownError("products.GET", error)
   }
 }

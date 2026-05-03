@@ -1,21 +1,27 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import {
+  handleUnknownError,
+  isAuthError,
+  requireAdmin,
+} from "@/lib/api"
 
-/**
- * GET /api/products/search?q=colchon
- * Busca productos y variantes para el selector
- */
+export const runtime = "nodejs"
+
+const MAX_LIMIT = 100
+
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if (isAuthError(auth)) return auth
+
   try {
     const searchParams = request.nextUrl.searchParams
-    const query = searchParams.get("q") || ""
-    const limit = parseInt(searchParams.get("limit") || "20")
+    const query = (searchParams.get("q") || "").trim()
+    const limitRaw = parseInt(searchParams.get("limit") || "20", 10)
+    const limit = Math.min(MAX_LIMIT, Math.max(1, isNaN(limitRaw) ? 20 : limitRaw))
 
-    if (query.length < 2) {
-      return NextResponse.json({ variants: [] })
-    }
+    if (query.length < 2) return NextResponse.json({ variants: [] })
 
-    // Buscar variantes con sus productos
     const variants = await prisma.productVariant.findMany({
       where: {
         isActive: true,
@@ -30,23 +36,12 @@ export async function GET(request: NextRequest) {
         },
       },
       include: {
-        product: {
-          select: {
-            id: true,
-            name: true,
-            brand: true,
-            sku: true,
-          },
-        },
+        product: { select: { id: true, name: true, brand: true, sku: true } },
       },
       take: limit,
-      orderBy: [
-        { product: { name: "asc" } },
-        { size: "asc" },
-      ],
+      orderBy: [{ product: { name: "asc" } }, { size: "asc" }],
     })
 
-    // Formatear respuesta
     const formattedVariants = variants.map((v) => ({
       id: v.id,
       size: v.size,
@@ -63,10 +58,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ variants: formattedVariants })
   } catch (error) {
-    console.error("Error searching products:", error)
-    return NextResponse.json(
-      { error: "Error al buscar productos" },
-      { status: 500 }
-    )
+    return handleUnknownError("products.search.GET", error)
   }
 }

@@ -1,53 +1,48 @@
 import { NextRequest, NextResponse } from "next/server"
+import { randomUUID } from "crypto"
 import { prisma } from "@/lib/prisma"
+import { quickProductSchema } from "@/lib/validations"
+import {
+  handleUnknownError,
+  isAuthError,
+  parseJson,
+  requireAdmin,
+} from "@/lib/api"
 
-/**
- * POST /api/products/quick
- * Crea un producto rápido con una variante
- * Usado para agregar productos al vuelo durante la creación de documentos
- */
+export const runtime = "nodejs"
+
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if (isAuthError(auth)) return auth
+
+  const parsed = await parseJson(request, quickProductSchema)
+  if (!parsed.ok) return parsed.response
+  const { name, size, price, categoryId, brand, warranty } = parsed.data
+
   try {
-    const body = await request.json()
-    const { name, size, price, categoryId } = body
-
-    // Validate required fields
-    if (!name || !size || !price) {
-      return NextResponse.json(
-        { error: "Nombre, medida y precio son requeridos" },
-        { status: 400 }
-      )
-    }
-
-    // Buscar o crear categoría "Otros" para productos rápidos
-    let category = await prisma.category.findFirst({
-      where: { name: "Otros" },
-    })
+    let category = categoryId
+      ? await prisma.category.findUnique({ where: { id: categoryId } })
+      : null
 
     if (!category) {
-      category = await prisma.category.create({
-        data: {
-          name: "Otros",
-          icon: "📦",
-          order: 99,
-        },
-      })
+      category = await prisma.category.findFirst({ where: { name: "Otros" } })
+      if (!category) {
+        category = await prisma.category.create({
+          data: { name: "Otros", icon: "📦", order: 99 },
+        })
+      }
     }
 
-    // Generar SKU único
-    const timestamp = Date.now().toString(36).toUpperCase()
-    const randomPart = Math.random().toString(36).substring(2, 5).toUpperCase()
-    const sku = `QUICK-${timestamp}-${randomPart}`
+    const sku = `QUICK-${randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`
 
-    // Crear producto con variante
     const product = await prisma.product.create({
       data: {
         sku,
         name,
-        categoryId: categoryId || category.id,
-        brand: "OTRO",
+        categoryId: category.id,
+        brand: brand ?? "OTRO",
         description: "Producto creado rápidamente",
-        warranty: 1,
+        warranty: warranty ?? 1,
         isActive: true,
         variants: {
           create: {
@@ -60,21 +55,14 @@ export async function POST(request: NextRequest) {
           },
         },
       },
-      include: {
-        variants: true,
-        category: true,
-      },
+      include: { variants: true, category: true },
     })
 
-    return NextResponse.json({
-      product,
-      variant: product.variants[0],
-    }, { status: 201 })
-  } catch (error) {
-    console.error("Error creating quick product:", error)
     return NextResponse.json(
-      { error: "Error al crear producto" },
-      { status: 500 }
+      { product, variant: product.variants[0] },
+      { status: 201 },
     )
+  } catch (error) {
+    return handleUnknownError("products.quick.POST", error)
   }
 }

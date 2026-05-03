@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import prisma from "@/lib/prisma"
 import { clientSchema } from "@/lib/validations"
+import {
+  errorResponse,
+  handleUnknownError,
+  isAuthError,
+  parseJson,
+  requireAdmin,
+} from "@/lib/api"
 
-interface Params {
-  params: Promise<{ id: string }>
-}
+export const runtime = "nodejs"
 
-// GET /api/clients/[id] - Obtener cliente
-export async function GET(request: NextRequest, { params }: Params) {
+type RouteContext = { params: Promise<{ id: string }> }
+
+export async function GET(request: NextRequest, { params }: RouteContext) {
+  const auth = await requireAdmin(request)
+  if (isAuthError(auth)) return auth
+
   try {
     const { id } = await params
-    
+
     const client = await prisma.client.findUnique({
       where: { id },
       include: {
@@ -26,32 +36,17 @@ export async function GET(request: NextRequest, { params }: Params) {
             date: true,
           },
         },
-        _count: {
-          select: { documents: true },
-        },
+        _count: { select: { documents: true } },
       },
     })
 
-    if (!client) {
-      return NextResponse.json(
-        { error: "Cliente no encontrado" },
-        { status: 404 }
-      )
-    }
+    if (!client) return errorResponse(404, "Cliente no encontrado")
 
-    // Calcular totales del cliente
     const stats = await prisma.document.aggregate({
-      where: {
-        clientId: id,
-        status: { in: ["APPROVED", "COMPLETED"] },
-      },
-      _sum: {
-        total: true,
-        amountPaid: true,
-      },
+      where: { clientId: id, status: { in: ["APPROVED", "COMPLETED"] } },
+      _sum: { total: true, amountPaid: true },
     })
 
-    // Convertir Decimal a number
     const total = Number(stats._sum.total || 0)
     const paid = Number(stats._sum.amountPaid || 0)
 
@@ -62,76 +57,61 @@ export async function GET(request: NextRequest, { params }: Params) {
       balance: total - paid,
     })
   } catch (error) {
-    console.error("Error fetching client:", error)
-    return NextResponse.json(
-      { error: "Error al obtener cliente" },
-      { status: 500 }
-    )
+    return handleUnknownError("clients.[id].GET", error)
   }
 }
 
-// PUT /api/clients/[id] - Actualizar cliente
-export async function PUT(request: NextRequest, { params }: Params) {
+export async function PUT(request: NextRequest, { params }: RouteContext) {
+  const auth = await requireAdmin(request)
+  if (isAuthError(auth)) return auth
+
+  const parsed = await parseJson(request, clientSchema)
+  if (!parsed.ok) return parsed.response
+  const data = parsed.data
+
   try {
     const { id } = await params
-    const body = await request.json()
-    const validatedData = clientSchema.parse(body)
-
     const client = await prisma.client.update({
       where: { id },
       data: {
-        name: validatedData.name,
-        phone: validatedData.phone,
-        dni: validatedData.dni || null,
-        email: validatedData.email || null,
-        address: validatedData.address || null,
-        city: validatedData.city,
-        province: validatedData.province,
-        notes: validatedData.notes || null,
+        name: data.name,
+        phone: data.phone,
+        dni: data.dni || null,
+        email: data.email || null,
+        address: data.address || null,
+        city: data.city,
+        province: data.province,
+        notes: data.notes || null,
       },
     })
-
     return NextResponse.json(client)
   } catch (error) {
-    console.error("Error updating client:", error)
-    if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json(
-        { error: "Datos inválidos", details: error },
-        { status: 400 }
-      )
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2025") return errorResponse(404, "Cliente no encontrado")
+      if (error.code === "P2002") return errorResponse(409, "Datos duplicados")
     }
-    return NextResponse.json(
-      { error: "Error al actualizar cliente" },
-      { status: 500 }
-    )
+    return handleUnknownError("clients.[id].PUT", error)
   }
 }
 
-// DELETE /api/clients/[id] - Eliminar cliente
-export async function DELETE(request: NextRequest, { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: RouteContext) {
+  const auth = await requireAdmin(request)
+  if (isAuthError(auth)) return auth
+
   try {
     const { id } = await params
-    
-    // Verificar que no tenga documentos
-    const documentsCount = await prisma.document.count({
-      where: { clientId: id },
-    })
 
+    const documentsCount = await prisma.document.count({ where: { clientId: id } })
     if (documentsCount > 0) {
-      return NextResponse.json(
-        { error: "No se puede eliminar un cliente con documentos asociados" },
-        { status: 400 }
-      )
+      return errorResponse(400, "No se puede eliminar un cliente con documentos asociados")
     }
 
     await prisma.client.delete({ where: { id } })
-
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error deleting client:", error)
-    return NextResponse.json(
-      { error: "Error al eliminar cliente" },
-      { status: 500 }
-    )
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return errorResponse(404, "Cliente no encontrado")
+    }
+    return handleUnknownError("clients.[id].DELETE", error)
   }
 }

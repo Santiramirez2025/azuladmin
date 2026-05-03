@@ -1,19 +1,22 @@
 // app/api/stats/route.ts
 import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
-import { 
-  startOfMonth, 
-  endOfMonth, 
-  startOfDay, 
-  endOfDay, 
-  subMonths, 
-  startOfWeek, 
-  subWeeks, 
+import {
+  startOfMonth,
+  endOfMonth,
+  startOfDay,
+  endOfDay,
+  subMonths,
+  startOfWeek,
+  subWeeks,
   subDays,
   endOfWeek,
-  isValid
+  isValid,
 } from "date-fns"
 import { decimalToNumber } from "@/lib/utils"
+import { handleUnknownError, isAuthError, requireAdmin } from "@/lib/api"
+
+export const runtime = "nodejs"
 
 // ============================================================================
 // TIPOS
@@ -103,10 +106,16 @@ function calculatePercentageChange(current: number, previous: number): number {
 // ============================================================================
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if (isAuthError(auth)) return auth
+
   try {
     const searchParams = request.nextUrl.searchParams
     const period = searchParams.get("period") || "month"
     const customDateParam = searchParams.get("date")
+    if (!["day", "week", "month", "year"].includes(period)) {
+      return NextResponse.json({ error: "Período inválido" }, { status: 400 })
+    }
 
     // ✅ Validar y parsear fecha de referencia
     let referenceDate = new Date()
@@ -335,21 +344,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response)
 
   } catch (error) {
-    console.error("❌ Error fetching stats:", error)
-    
-    // Log detallado en desarrollo
-    if (process.env.NODE_ENV === "development") {
-      console.error("Stack trace:", error instanceof Error ? error.stack : "No stack trace")
-    }
-
-    return NextResponse.json(
-      { 
-        error: "Error al obtener estadísticas",
-        message: process.env.NODE_ENV === "development" && error instanceof Error
-          ? error.message
-          : undefined
-      },
-      { status: 500 }
-    )
+    return handleUnknownError("stats.GET", error)
   }
 }

@@ -117,7 +117,7 @@ export const customDocumentItemSchema = z.object({
 // Schema para items del catálogo
 export const catalogDocumentItemSchema = z.object({
   variantId: z.string().min(1),
-  isCustom: z.literal(false).optional(),
+  isCustom: z.literal(false).default(false),
   quantity: z.number().int().positive("La cantidad debe ser mayor a 0"),
   // Campos opcionales que se llenan automáticamente
   productName: z.string().optional(),
@@ -138,12 +138,7 @@ export const createDocumentSchema = z.object({
   userId: z.string().optional(),
   type: z.enum(["PRESUPUESTO", "RECIBO", "REMITO"]),
   items: z
-    .array(
-      z.union([
-        catalogDocumentItemSchema,
-        customDocumentItemSchema,
-      ])
-    )
+    .array(apiDocumentItemSchema)
     .min(1, "Debe incluir al menos un item"),
   observations: z.string().optional().nullable(),
   internalNotes: z.string().optional().nullable(),
@@ -342,3 +337,67 @@ export function getAllValidationErrors<T>(
 export function safeParse<T>(schema: z.ZodSchema<T>, data: unknown) {
   return schema.safeParse(data)
 }
+
+// ═══════════════════════════════════════════════════════════
+// QUERY SCHEMAS Y BODIES PARA ENDPOINTS API
+// ═══════════════════════════════════════════════════════════
+
+const numericString = (def: number, max?: number) =>
+  z
+    .union([z.string(), z.number()])
+    .transform((v) => (typeof v === "string" ? Number(v) : v))
+    .pipe(z.number().int().positive().max(max ?? Number.MAX_SAFE_INTEGER))
+    .default(def)
+
+export const idParamSchema = z.object({
+  id: z.string().min(1, "ID requerido"),
+})
+
+export const productsQuerySchema = z.object({
+  search: z.string().optional(),
+  categoryId: z.string().optional(),
+  source: z.enum(["STOCK", "CATALOGO"]).optional(),
+  isActive: z
+    .union([z.string(), z.boolean()])
+    .transform((v) => (typeof v === "string" ? v === "true" : v))
+    .optional(),
+  limit: numericString(100, 500),
+})
+
+export const productSearchQuerySchema = z.object({
+  q: z.string().min(1, "Query requerida").max(100),
+  limit: numericString(20, 100),
+})
+
+export const quickProductSchema = z.object({
+  name: z.string().min(2, "Nombre muy corto").max(120).trim(),
+  size: z.string().min(1, "Medida requerida").max(60).trim(),
+  price: z.number().positive("El precio debe ser mayor a 0"),
+  categoryId: z.string().min(1, "Categoría requerida"),
+  brand: z.string().max(60).optional(),
+  warranty: z.number().int().min(0).max(50).optional(),
+})
+
+export const settingsBodySchema = z.object({
+  key: z.string().min(1).max(100),
+  value: z.unknown(),
+})
+
+export const statsQuerySchema = z.object({
+  period: z.enum(["day", "week", "month", "year"]).default("month"),
+  date: z.string().datetime().optional(),
+})
+
+export const documentsBulkDeleteSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(100),
+})
+
+export const duplicateDocumentSchema = z.object({
+  type: z.enum(["PRESUPUESTO", "RECIBO", "REMITO"]).optional(),
+})
+
+export type ProductsQuery = z.infer<typeof productsQuerySchema>
+export type ProductSearchQuery = z.infer<typeof productSearchQuerySchema>
+export type QuickProductInput = z.infer<typeof quickProductSchema>
+export type SettingsBodyInput = z.infer<typeof settingsBodySchema>
+export type StatsQuery = z.infer<typeof statsQuerySchema>
