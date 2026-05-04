@@ -510,7 +510,7 @@ export default function EstadisticasPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {stats.recentDocuments.map((doc, index) => (
+                {stats.recentDocuments.map((doc) => (
                   <a key={doc.id} href={`/documentos/${doc.id}`} className="group flex items-center justify-between rounded-xl border border-slate-200/50 bg-gradient-to-r from-slate-50/50 to-transparent p-4 transition-all duration-300 hover:border-violet-300/50 hover:bg-violet-50/30 hover:shadow-md">
                     <div className="flex items-center gap-4">
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 font-mono text-sm font-bold text-white shadow-lg shadow-violet-500/20 transition-transform group-hover:scale-110">

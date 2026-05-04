@@ -1,9 +1,5 @@
 // lib/utils.ts
 // ⚠️ ESTE ARCHIVO ES SOLO PARA SERVER COMPONENTS
-// TODO: Descomentar "server-only" después de actualizar todos los imports en client components
-// import "server-only"
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
 import { Decimal } from "@prisma/client/runtime/library"
 
 // ============================================================================
@@ -354,9 +350,9 @@ export function numberToDecimal(value: number): Decimal {
 /**
  * Log estructurado para debugging
  */
-export function logDev(label: string, data: any) {
+export function logDev(label: string, data: unknown) {
   if (process.env.NODE_ENV === "development") {
-    console.log(`[${label}]`, JSON.stringify(data, null, 2))
+    console.info(`[${label}]`, JSON.stringify(data, null, 2))
   }
 }
 

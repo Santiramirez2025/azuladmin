@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Check, Copy, ExternalLink, Loader2, MessageCircle, Truck, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,13 +29,16 @@ export function WhatsAppClientModal({ open, onClose, document: doc }: ClientModa
   const [message, setMessage] = useState("")
   const [phone, setPhone] = useState("")
   const [isSending, setIsSending] = useState(false)
+  const [trackedDocId, setTrackedDocId] = useState<string | null>(null)
 
-  useEffect(() => {
+  const currentDocId = open && doc ? doc.id : null
+  if (currentDocId !== trackedDocId) {
+    setTrackedDocId(currentDocId)
     if (doc && open) {
       setMessage(generateClientMessage(doc))
       setPhone(doc.client.phone)
     }
-  }, [doc, open])
+  }
 
   const handleSend = async () => {
     if (!phone.trim()) {
@@ -134,13 +137,16 @@ interface DeliveryModalProps {
 export function WhatsAppDeliveryModal({ open, onClose, document: doc }: DeliveryModalProps) {
   const [message, setMessage] = useState("")
   const [copied, setCopied] = useState(false)
+  const [trackedDocId, setTrackedDocId] = useState<string | null>(null)
 
-  useEffect(() => {
+  const currentDocId = open && doc ? doc.id : null
+  if (currentDocId !== trackedDocId) {
+    setTrackedDocId(currentDocId)
     if (doc && open) {
       setMessage(generateDeliveryMessage(doc))
       setCopied(false)
     }
-  }, [doc, open])
+  }
 
   const handleCopy = async () => {
     try {

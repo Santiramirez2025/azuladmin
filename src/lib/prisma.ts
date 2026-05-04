@@ -8,7 +8,7 @@ import { PrismaClient } from "@prisma/client"
 // y optimiza conexiones en producción
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var cachedPrisma: PrismaClient | undefined
 }
 

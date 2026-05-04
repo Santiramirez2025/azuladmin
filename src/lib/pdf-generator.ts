@@ -154,7 +154,7 @@ export async function generateDocumentPdf(doc: PdfDocumentData): Promise<Buffer>
 
       drawHeader(pdf, doc, leftMargin, rightEdge, pageWidth)
       const clientY = drawClient(pdf, doc, leftMargin, rightEdge)
-      let { rowY, cols } = drawItemsTable(pdf, doc, leftMargin, rightEdge, pageWidth, clientY, isRemito)
+      let { rowY } = drawItemsTable(pdf, doc, leftMargin, rightEdge, pageWidth, clientY, isRemito)
 
       if (!isRemito) {
         rowY = drawTotals(pdf, doc, leftMargin, rightEdge, rowY)

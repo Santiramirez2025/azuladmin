@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import {
   Search,
   Package,
@@ -15,7 +15,6 @@ import {
   Loader2,
   Award,
   Maximize2,
-  Tag,
   BedDouble,
   Shield,
   Sparkles,
@@ -301,7 +300,7 @@ function ProductCard({
   const activeVariants = product.variants.filter(v => v.isActive && v.price > 0)
   const minPrice = activeVariants.length > 0 ? Math.min(...activeVariants.map(v => v.price)) : 0
   const maxPrice = activeVariants.length > 0 ? Math.max(...activeVariants.map(v => v.price)) : 0
-  const CategoryIcon = getCategoryIcon(product.category.name)
+  const categoryIcon = getCategoryIcon(product.category.name)
   const categoryColor = getCategoryColor(product.category.name)
 
   return (
@@ -353,7 +352,7 @@ function ProductCard({
                 "flex items-center gap-1 rounded-md px-2 py-0.5 text-white text-xs font-medium bg-gradient-to-r",
                 categoryColor
               )}>
-                <CategoryIcon className="h-3 w-3" />
+                {React.createElement(categoryIcon, { className: "h-3 w-3" })}
                 {product.category.name}
               </div>
               <span className="text-slate-300">•</span>
@@ -537,7 +536,8 @@ export default function ProductosPage() {
   const toggleExpanded = (id: string) => {
     setExpandedProducts(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }

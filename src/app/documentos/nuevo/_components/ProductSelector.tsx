@@ -383,15 +383,21 @@ export const ProductSelector = memo(function ProductSelector({
       if (res.ok) {
         const data = await res.json()
         // Aplanar products[]→variants[] al formato que espera el componente
-        const items: ProductVariantResult[] = (data.items || []).flatMap((product: any) =>
-          (product.variants || []).map((variant: any) => ({
-            variantId:   variant.id,
+        type ApiProduct = {
+          name: string
+          sku: string
+          variants?: Array<{ id: string; size: string; price: number | string; source: StockSource }>
+        }
+        const apiItems: ApiProduct[] = data.items || []
+        const items: ProductVariantResult[] = apiItems.flatMap((product) =>
+          (product.variants ?? []).map((variant) => ({
+            variantId: variant.id,
             productName: product.name,
             productSize: variant.size,
-            price:       Number(variant.price),
-            source:      variant.source,
-            sku:         product.sku,
-          }))
+            price: Number(variant.price),
+            source: variant.source,
+            sku: product.sku,
+          })),
         )
         setSearchResults(items)
       }
