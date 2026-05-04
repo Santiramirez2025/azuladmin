@@ -9,6 +9,7 @@ import {
   documentsBulkDeleteSchema,
 } from "@/lib/validations"
 import { calculateBalance, decimalToNumber } from "@/lib/utils"
+import { notifyAsync } from "@/lib/push"
 import {
   errorResponse,
   handleUnknownError,
@@ -362,6 +363,40 @@ export async function POST(request: NextRequest) {
         subtotal: decimalToNumber(item.subtotal),
       })),
     }
+
+    // Push notification — fire-and-forget (no bloquea la respuesta)
+    const docNumber = String(document.number).padStart(5, "0")
+    const totalFmt = new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      maximumFractionDigits: 0,
+    }).format(decimalToNumber(document.total))
+
+    if (document.type === "RECIBO") {
+      const balance = document.balance ? decimalToNumber(document.balance) : 0
+      const isPaid = balance === 0 && document.amountPaid && decimalToNumber(document.amountPaid) > 0
+      notifyAsync({
+        title: isPaid ? "💰 Venta cobrada" : "🧾 Nuevo recibo",
+        body: `${document.client.name} · ${totalFmt}` + (isPaid ? "" : ` · saldo ${new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(balance)}`),
+        url: `/documentos/${document.id}`,
+        tag: `doc-${document.id}`,
+      })
+    } else if (document.type === "PRESUPUESTO") {
+      notifyAsync({
+        title: "📋 Nuevo presupuesto",
+        body: `${document.client.name} · ${totalFmt}`,
+        url: `/documentos/${document.id}`,
+        tag: `doc-${document.id}`,
+      })
+    } else if (document.type === "REMITO") {
+      notifyAsync({
+        title: "📦 Nuevo remito",
+        body: `${document.client.name} · ${docNumber}`,
+        url: `/documentos/${document.id}`,
+        tag: `doc-${document.id}`,
+      })
+    }
+
     return NextResponse.json(response, { status: 201 })
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {

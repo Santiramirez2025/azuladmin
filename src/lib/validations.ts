@@ -401,3 +401,25 @@ export type ProductSearchQuery = z.infer<typeof productSearchQuerySchema>
 export type QuickProductInput = z.infer<typeof quickProductSchema>
 export type SettingsBodyInput = z.infer<typeof settingsBodySchema>
 export type StatsQuery = z.infer<typeof statsQuerySchema>
+
+// ═══════════════════════════════════════════════════════════
+// PUSH NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════
+
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.string().url(),
+  keys: z.object({
+    p256dh: z.string().min(1),
+    auth: z.string().min(1),
+  }),
+  userAgent: z.string().max(500).optional(),
+})
+
+export const pushSendSchema = z.object({
+  title: z.string().min(1).max(200),
+  body: z.string().min(1).max(500),
+  url: z.string().optional(),
+  tag: z.string().max(100).optional(),
+})
+
+export type PushSubscriptionInput = z.infer<typeof pushSubscriptionSchema>

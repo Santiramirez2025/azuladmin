@@ -27,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { usePaymentRates } from "@/hooks/use-payment-rates"
+import { PushNotificationsCard } from "./_components/PushNotificationsCard"
 
 interface CompanyInfo {
   name: string
@@ -174,6 +175,11 @@ export default function ConfiguracionPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Notificaciones push */}
+        <div className="mb-6">
+          <PushNotificationsCard />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
