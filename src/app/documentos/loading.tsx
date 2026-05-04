@@ -1,26 +1,17 @@
-import { Card, CardContent } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
 import { StatsSkeleton, TableSkeleton } from "./_components/Skeletons"
 
 export default function DocumentosLoading() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 p-4 pt-20 md:p-8 md:pt-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-8 space-y-3">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-14 w-14 rounded-2xl" />
-            <Skeleton className="h-10 w-64" />
-          </div>
-          <Skeleton className="h-5 w-96" />
-        </div>
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8">
+      <div className="mb-6 space-y-2">
+        <div className="h-7 w-40 animate-pulse rounded bg-neutral-100" />
+        <div className="h-4 w-48 animate-pulse rounded bg-neutral-100" />
+      </div>
+      <div className="mb-5">
         <StatsSkeleton />
-        <div className="mt-8">
-          <Card className="border-0 bg-white/80 shadow-xl backdrop-blur-sm">
-            <CardContent className="p-6">
-              <TableSkeleton />
-            </CardContent>
-          </Card>
-        </div>
+      </div>
+      <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+        <TableSkeleton />
       </div>
     </div>
   )

@@ -41,39 +41,23 @@ export const STATUS_CONFIG: Record<
     color: "default" | "secondary" | "success" | "warning" | "destructive"
     label: string
     icon: typeof CheckCircle
-    gradient: string
   }
 > = {
-  DRAFT: { color: "secondary", label: "Borrador", icon: FileText, gradient: "from-slate-500 to-slate-600" },
-  SENT: { color: "warning", label: "Enviado", icon: Send, gradient: "from-blue-500 to-cyan-500" },
-  APPROVED: { color: "default", label: "Aprobado", icon: CheckCircle, gradient: "from-violet-500 to-purple-600" },
-  COMPLETED: { color: "success", label: "Completado", icon: CheckCircle, gradient: "from-emerald-500 to-green-600" },
-  CANCELLED: { color: "destructive", label: "Cancelado", icon: X, gradient: "from-red-500 to-rose-600" },
-  EXPIRED: { color: "secondary", label: "Vencido", icon: Clock, gradient: "from-orange-500 to-amber-600" },
+  DRAFT: { color: "secondary", label: "Borrador", icon: FileText },
+  SENT: { color: "warning", label: "Enviado", icon: Send },
+  APPROVED: { color: "default", label: "Aprobado", icon: CheckCircle },
+  COMPLETED: { color: "success", label: "Completado", icon: CheckCircle },
+  CANCELLED: { color: "destructive", label: "Cancelado", icon: X },
+  EXPIRED: { color: "secondary", label: "Vencido", icon: Clock },
 }
 
 export const TYPE_CONFIG: Record<
   DocumentType,
-  { label: string; shortLabel: string; gradient: string; iconBg: string }
+  { label: string; shortLabel: string }
 > = {
-  PRESUPUESTO: {
-    label: "Presupuesto",
-    shortLabel: "PRE",
-    gradient: "from-blue-500 to-indigo-600",
-    iconBg: "bg-gradient-to-br from-blue-500/10 to-indigo-600/10",
-  },
-  RECIBO: {
-    label: "Recibo",
-    shortLabel: "REC",
-    gradient: "from-emerald-500 to-teal-600",
-    iconBg: "bg-gradient-to-br from-emerald-500/10 to-teal-600/10",
-  },
-  REMITO: {
-    label: "Remito",
-    shortLabel: "REM",
-    gradient: "from-orange-500 to-red-600",
-    iconBg: "bg-gradient-to-br from-orange-500/10 to-red-600/10",
-  },
+  PRESUPUESTO: { label: "Presupuesto", shortLabel: "PRE" },
+  RECIBO: { label: "Recibo", shortLabel: "REC" },
+  REMITO: { label: "Remito", shortLabel: "REM" },
 }
 
 export const PAGE_SIZE = 20

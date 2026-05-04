@@ -3,28 +3,21 @@
 import { use, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import {
-  AlertTriangle,
   ArrowLeft,
   Bell,
-  Calendar,
   CheckCircle,
+  ChevronRight,
   Clock,
-  DollarSign,
   Edit,
   MessageCircle,
   Package,
   Printer,
-  Receipt,
   Send,
-  ShieldCheck,
-  Sparkles,
   Truck,
-  User,
   Warehouse,
   XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency, formatDate, generateWhatsAppLink } from "@/lib/utils-client"
 import type { DocumentStatus } from "@/types"
@@ -92,7 +85,7 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
     } catch (err) {
       console.error("Error updating status:", err)
       const message = err instanceof Error ? err.message : "Error desconocido"
-      alert(`Error al actualizar el estado: ${message}`)
+      alert(`Error: ${message}`)
     } finally {
       setIsUpdating(false)
     }
@@ -119,7 +112,7 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
 
   return (
     <>
-      {/* PRINTABLE DOCUMENT */}
+      {/* PRINTABLE DOCUMENT (estilos en el style jsx, sin cambios) */}
       <div className="print-document" id="printable-area">
         <div className="print-header">
           <div className="print-header-left">
@@ -279,521 +272,334 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
-      {/* SCREEN-ONLY UI */}
-      <div className="screen-only min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 p-4 pt-20 pb-24 md:p-8 md:pt-8 md:pb-8">
-        <div className="mx-auto max-w-7xl">
-          {/* Header */}
-          <div className="mb-6 md:mb-8">
-            <div className="mb-4 flex items-center gap-3 md:mb-6 md:gap-4">
-              <Link href="/documentos">
-                <div className="group relative">
-                  <div className="absolute -inset-1 animate-pulse rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 opacity-20 blur transition group-hover:opacity-30" />
-                  <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl border border-slate-200/50 bg-white/80 shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all hover:scale-105 hover:border-blue-300 hover:bg-blue-50 md:h-12 md:w-12">
-                    <ArrowLeft className="h-4 w-4 md:h-5 md:w-5" />
-                  </Button>
-                </div>
-              </Link>
-              <div className="min-w-0 flex-1">
-                <div className="mb-2 flex flex-wrap items-center gap-2 md:gap-3">
-                  <h1 className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-xl font-bold text-transparent md:text-3xl">
-                    {typeLabels[document.type]} #{String(document.number).padStart(5, "0")}
-                  </h1>
-                  <div className="relative">
-                    <div className={`absolute -inset-1 animate-pulse rounded-full bg-gradient-to-r ${statusConfig[document.status].gradient} opacity-20 blur`} />
-                    <Badge variant={statusConfig[document.status].color} className="relative gap-1 px-2.5 py-1 text-xs font-bold shadow-lg md:gap-1.5 md:px-3 md:py-1.5 md:text-sm">
-                      <StatusIcon className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                      {statusConfig[document.status].label}
-                    </Badge>
+      {/* SCREEN UI */}
+      <div className="screen-only mx-auto w-full max-w-5xl px-4 py-6 md:px-8">
+        {/* Top */}
+        <div className="mb-6 flex items-center gap-3">
+          <Link href="/documentos">
+            <Button variant="ghost" size="icon-sm" aria-label="Volver">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-semibold tracking-tight md:text-2xl">
+                {typeLabels[document.type]} #{String(document.number).padStart(5, "0")}
+              </h1>
+              <Badge variant={statusConfig[document.status].color} className="gap-1">
+                <StatusIcon className="h-3 w-3" />
+                {statusConfig[document.status].label}
+              </Badge>
+            </div>
+            <p className="mt-1 text-xs text-neutral-500">
+              {formatDate(document.date)} · por {document.createdBy.name}
+            </p>
+          </div>
+        </div>
+
+        {/* Action bar */}
+        <div className="mb-6 flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={sendWhatsApp} disabled={isUpdating} className="gap-1.5">
+            <MessageCircle className="h-4 w-4" />
+            WhatsApp
+          </Button>
+          {document.type === "RECIBO" && (
+            <Button variant="outline" size="sm" onClick={notifyOwner} className="gap-1.5">
+              <Bell className="h-4 w-4" />
+              Notificar venta
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
+            <Printer className="h-4 w-4" />
+            Imprimir
+          </Button>
+          {document.status === "DRAFT" && (
+            <Link href={`/documentos/nuevo?from=${document.id}`}>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Edit className="h-4 w-4" />
+                Editar
+              </Button>
+            </Link>
+          )}
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Document Preview */}
+          <div className="lg:col-span-2">
+            <div ref={printRef} className="rounded-2xl border border-neutral-200 bg-white">
+              {/* Header */}
+              <div className="border-b border-neutral-200 px-6 py-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="mb-1.5 flex items-center gap-2.5">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-900">
+                        <span className="text-sm font-bold text-white">A</span>
+                      </div>
+                      <h2 className="text-lg font-semibold tracking-tight">{BUSINESS.name}</h2>
+                    </div>
+                    <p className="text-xs text-neutral-500">
+                      {BUSINESS.address} · Tel: {BUSINESS.phone}
+                    </p>
+                    <p className="text-xs text-neutral-500">CUIT: {BUSINESS.cuit}</p>
+                  </div>
+                  <div className="rounded-xl bg-neutral-900 px-4 py-2.5 text-right">
+                    <p className="text-[10px] uppercase tracking-wider text-neutral-400">{typeLabels[document.type]}</p>
+                    <p className="font-mono text-2xl font-semibold tabular-nums text-white">
+                      {String(document.number).padStart(5, "0")}
+                    </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-600 md:gap-2 md:text-sm">
-                  <Calendar className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                  <span className="truncate">Creado el {formatDate(document.date)}</span>
-                  <span className="hidden text-slate-400 sm:inline">•</span>
-                  <span className="hidden truncate sm:inline">por {document.createdBy.name}</span>
+              </div>
+
+              {/* Cliente */}
+              <div className="border-b border-neutral-100 px-6 py-4">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-neutral-500">Cliente</p>
+                <p className="mt-1 text-base font-semibold">{document.client.name}</p>
+                <div className="mt-1 text-sm text-neutral-600">
+                  {document.client.phone}
+                  {document.client.address && ` · ${document.client.address}, ${document.client.city}`}
+                  {!document.client.address && ` · ${document.client.city}`}
                 </div>
               </div>
-            </div>
 
-            {/* Action Bar */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 flex gap-2 border-t border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-900/10 backdrop-blur-xl md:relative md:z-auto md:border-0 md:bg-transparent md:p-0 md:shadow-none">
-              <Button variant="outline" size="sm" onClick={sendWhatsApp} disabled={isUpdating}
-                className="flex-1 border-slate-200 bg-white text-xs font-semibold shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50 md:flex-none md:text-sm">
-                <MessageCircle className="mr-1.5 h-3.5 w-3.5 md:mr-2 md:h-4 md:w-4" />
-                <span className="hidden sm:inline">WhatsApp</span>
-                <span className="sm:hidden">Cliente</span>
-              </Button>
+              {/* Items */}
+              <div className="overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-neutral-100 bg-neutral-50">
+                      <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-wider text-neutral-500">Producto</th>
+                      <th className="px-3 py-3 text-center text-[10px] font-medium uppercase tracking-wider text-neutral-500">Cant.</th>
+                      {!isRemito && (
+                        <>
+                          <th className="px-3 py-3 text-right text-[10px] font-medium uppercase tracking-wider text-neutral-500">P. unit.</th>
+                          <th className="px-6 py-3 text-right text-[10px] font-medium uppercase tracking-wider text-neutral-500">Subtotal</th>
+                        </>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {document.items.map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-6 py-4">
+                          <p className="text-sm font-medium">{item.productName}</p>
+                          <div className="mt-0.5 flex items-center gap-2 text-xs text-neutral-500">
+                            <span>{item.productSize}</span>
+                            <span className="text-neutral-300">·</span>
+                            <span className={item.source === "STOCK" ? "text-emerald-700" : "text-neutral-600"}>
+                              {item.source === "STOCK" ? "Stock" : "Catálogo"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 text-center">
+                          <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-md bg-neutral-100 px-2 text-sm font-medium tabular-nums">
+                            {item.quantity}
+                          </span>
+                        </td>
+                        {!isRemito && (
+                          <>
+                            <td className="px-3 py-4 text-right text-sm tabular-nums text-neutral-600">{formatCurrency(item.unitPrice)}</td>
+                            <td className="px-6 py-4 text-right text-sm font-semibold tabular-nums">{formatCurrency(item.subtotal)}</td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-              {document.type === "RECIBO" && (
-                <Button variant="outline" size="sm" onClick={notifyOwner}
-                  className="flex-1 border-emerald-200 bg-emerald-50/50 text-xs font-semibold text-emerald-700 shadow-lg shadow-emerald-500/5 transition-all hover:border-emerald-400 hover:bg-emerald-100 hover:text-emerald-800 md:flex-none md:text-sm">
-                  <Bell className="mr-1.5 h-3.5 w-3.5 md:mr-2 md:h-4 md:w-4" />
-                  <span className="hidden sm:inline">Notificar Venta</span>
-                  <span className="sm:hidden">Notificar</span>
-                </Button>
+              {/* Totals */}
+              {!isRemito && (
+                <div className="border-t border-neutral-100 px-6 py-5">
+                  <dl className="ml-auto max-w-sm space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <dt className="text-neutral-500">Subtotal</dt>
+                      <dd className="font-medium tabular-nums">{formatCurrency(document.subtotal)}</dd>
+                    </div>
+                    {document.surcharge > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <dt className="text-neutral-500">Recargo {document.installments} cuotas (+{document.surchargeRate}%)</dt>
+                        <dd className="font-medium tabular-nums">{formatCurrency(document.surcharge)}</dd>
+                      </div>
+                    )}
+                    {document.shippingCost > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <dt className="text-neutral-500">Envío</dt>
+                        <dd className="font-medium tabular-nums">{formatCurrency(document.shippingCost)}</dd>
+                      </div>
+                    )}
+                    <div className="mt-3 flex items-center justify-between border-t border-neutral-200 pt-3">
+                      <dt className="text-sm font-medium uppercase tracking-wider">Total</dt>
+                      <dd className="text-2xl font-semibold tabular-nums">{formatCurrency(document.total)}</dd>
+                    </div>
+
+                    {document.type === "RECIBO" && (
+                      <div className="space-y-2 pt-3">
+                        {document.amountPaid !== undefined && document.amountPaid > 0 && (
+                          <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 text-sm ring-1 ring-inset ring-emerald-200">
+                            <span className="text-emerald-700">Pagado ({document.paymentType || "Efectivo"})</span>
+                            <span className="font-semibold tabular-nums text-emerald-900">{formatCurrency(document.amountPaid)}</span>
+                          </div>
+                        )}
+                        {document.balance !== undefined && document.balance > 0 && (
+                          <div className="rounded-lg bg-amber-50 px-3 py-2.5 ring-1 ring-inset ring-amber-200">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-amber-800">Saldo pendiente</span>
+                              <span className="text-lg font-semibold tabular-nums text-amber-900">{formatCurrency(document.balance)}</span>
+                            </div>
+                          </div>
+                        )}
+                        {document.balance === 0 && document.amountPaid && document.amountPaid > 0 && (
+                          <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm ring-1 ring-inset ring-emerald-200">
+                            <CheckCircle className="h-4 w-4 text-emerald-600" />
+                            <span className="font-medium text-emerald-700">Pago completo</span>
+                          </div>
+                        )}
+                        {(!document.amountPaid || document.amountPaid === 0) && (
+                          <div className="rounded-lg bg-neutral-50 px-3 py-2 text-sm">
+                            <p className="font-medium text-neutral-700">A cuenta</p>
+                            <p className="text-xs text-neutral-500">Sin pago registrado</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </dl>
+                </div>
               )}
 
-              <Button variant="outline" size="sm" onClick={handlePrint}
-                className="flex-1 border-slate-200 bg-white text-xs font-semibold shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 md:flex-none md:text-sm">
-                <Printer className="mr-1.5 h-3.5 w-3.5 md:mr-2 md:h-4 md:w-4" />
-                <span className="hidden sm:inline">Imprimir</span>
-                <span className="sm:hidden">PDF</span>
-              </Button>
-
-              {document.status === "DRAFT" && (
-                <Link href={`/documentos/nuevo?from=${document.id}`} className="flex-1 md:flex-none">
-                  <Button variant="outline" size="sm"
-                    className="w-full border-slate-200 bg-white text-xs font-semibold shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 md:text-sm">
-                    <Edit className="mr-1.5 h-3.5 w-3.5 md:mr-2 md:h-4 md:w-4" />
-                    Editar
-                  </Button>
-                </Link>
+              {/* Observaciones */}
+              {document.observations && (
+                <div className="border-t border-neutral-100 px-6 py-4">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-neutral-500">Observaciones</p>
+                  <p className="mt-1 text-sm leading-relaxed text-neutral-700">{document.observations}</p>
+                </div>
               )}
             </div>
           </div>
 
-          <div className="space-y-4 md:grid md:gap-6 md:space-y-0 lg:grid-cols-3">
-            {/* Document Preview (screen) */}
-            <div className="lg:col-span-2">
-              <div className="group relative">
-                <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 opacity-20 blur transition duration-500 group-hover:opacity-30" />
-                <Card className="relative overflow-hidden border-0 bg-white/95 shadow-2xl shadow-blue-500/10 backdrop-blur-sm">
-                  <CardContent className="relative p-6 md:p-10" ref={printRef}>
-                    {/* Header */}
-                    <div className="mb-8 grid grid-cols-[1fr_auto] gap-6 border-b-2 border-blue-600 pb-6">
-                      <div>
-                        <div className="mb-3 flex items-center gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 shadow-lg">
-                            <Sparkles className="h-7 w-7 text-white" />
-                          </div>
-                          <div>
-                            <h1 className="text-2xl font-black uppercase tracking-tight text-blue-900">{BUSINESS.name}</h1>
-                            <p className="text-xs font-medium text-slate-600">{BUSINESS.tagline}</p>
-                          </div>
-                        </div>
-                        <div className="space-y-0.5 text-xs text-slate-700">
-                          <p className="font-semibold">📍 {BUSINESS.address}</p>
-                          <p>📞 {BUSINESS.phone} • ✉️ {BUSINESS.email}</p>
-                          <p className="text-slate-500">CUIT: {BUSINESS.cuit} | Ing. Brutos: {BUSINESS.iibb}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end justify-between">
-                        <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 px-6 py-4 text-right shadow-xl">
-                          <p className="mb-1 text-xs font-bold uppercase tracking-wider text-blue-200">{typeLabels[document.type]}</p>
-                          <p className="text-4xl font-black tabular-nums text-white">{String(document.number).padStart(5, "0")}</p>
-                        </div>
-                        <p className="mt-2 text-sm font-semibold text-slate-600">{formatDate(document.date)}</p>
-                      </div>
-                    </div>
-
-                    {/* Cliente */}
-                    <div className="mb-6 overflow-hidden rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50/80 to-indigo-50/50 p-4 shadow-sm">
-                      <div className="mb-2 flex items-center gap-2">
-                        <div className="rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 p-1.5 shadow-md">
-                          <User className="h-4 w-4 text-white" />
-                        </div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Cliente</p>
-                      </div>
-                      <p className="mb-1 text-xl font-black text-slate-900">{document.client.name}</p>
-                      <div className="flex flex-col gap-0.5 text-sm text-slate-700">
-                        <span className="font-semibold">📞 {document.client.phone}</span>
-                        {document.client.address && (
-                          <span className="font-medium">📍 {document.client.address}, {document.client.city}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Tabla */}
-                    <div className="mb-6 overflow-hidden rounded-xl border-2 border-slate-200 shadow-sm">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b-2 border-slate-300 bg-slate-100">
-                            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-700">Producto</th>
-                            <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-700">Cant.</th>
-                            {!isRemito && (
-                              <>
-                                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-700">Precio Unit.</th>
-                                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-700">Subtotal</th>
-                              </>
-                            )}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                          {document.items.map((item, index) => (
-                            <tr key={item.id} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
-                              <td className="px-4 py-4">
-                                <div className="space-y-1.5">
-                                  <p className="font-bold text-slate-900">{item.productName}</p>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium text-slate-600">{item.productSize}</span>
-                                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold shadow-sm ${
-                                      item.source === "STOCK" ? "bg-emerald-100 text-emerald-800" : "bg-blue-100 text-blue-800"
-                                    }`}>
-                                      {item.source === "STOCK" ? "✓ Stock" : "📦 Catálogo"}
-                                    </span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-4 text-center">
-                                <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-lg font-bold text-white shadow-sm">
-                                  {item.quantity}
-                                </span>
-                              </td>
-                              {!isRemito && (
-                                <>
-                                  <td className="px-4 py-4 text-right font-semibold tabular-nums text-slate-700">{formatCurrency(item.unitPrice)}</td>
-                                  <td className="px-4 py-4 text-right text-lg font-bold tabular-nums text-slate-900">{formatCurrency(item.subtotal)}</td>
-                                </>
-                              )}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Totales */}
-                    {!isRemito && (
-                      <div className="flex justify-end">
-                        <div className="w-full space-y-3 rounded-xl border-2 border-slate-200 bg-slate-50 p-5 shadow-sm md:w-96">
-                          <div className="flex justify-between border-b border-slate-300 pb-2.5 text-sm">
-                            <span className="font-semibold text-slate-700">Subtotal</span>
-                            <span className="font-bold tabular-nums text-slate-900">{formatCurrency(document.subtotal)}</span>
-                          </div>
-                          {document.surcharge > 0 && (
-                            <div className="flex justify-between rounded-lg bg-orange-50 px-3 py-2 text-sm">
-                              <span className="font-semibold text-orange-800">Recargo {document.installments} cuotas (+{document.surchargeRate}%)</span>
-                              <span className="font-bold tabular-nums text-orange-900">{formatCurrency(document.surcharge)}</span>
-                            </div>
-                          )}
-                          {document.shippingCost > 0 && (
-                            <div className="flex justify-between text-sm">
-                              <span className="font-semibold text-slate-700">Envío</span>
-                              <span className="font-bold tabular-nums text-slate-900">{formatCurrency(document.shippingCost)}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 p-4 shadow-lg">
-                            <span className="text-sm font-bold uppercase tracking-wider text-white">Total</span>
-                            <span className="text-3xl font-black tabular-nums text-white">{formatCurrency(document.total)}</span>
-                          </div>
-
-                          {document.type === "RECIBO" && (
-                            <div className="space-y-2.5 border-t-2 border-slate-300 pt-3">
-                              {document.amountPaid !== undefined && document.amountPaid > 0 && (
-                                <div className="rounded-lg bg-emerald-50 px-3 py-2.5 shadow-sm">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm font-bold text-emerald-800">✓ Entregó ({document.paymentType || "Efectivo"})</span>
-                                    <span className="text-lg font-black tabular-nums text-emerald-900">{formatCurrency(document.amountPaid)}</span>
-                                  </div>
-                                </div>
-                              )}
-                              {document.balance !== undefined && document.balance > 0 && (
-                                <div className="rounded-xl border-2 border-orange-500 bg-gradient-to-br from-orange-100 to-amber-100 p-4 shadow-md">
-                                  <div className="flex items-center justify-between gap-3">
-                                    <div className="flex-1">
-                                      <p className="mb-0.5 flex items-center gap-2 text-sm font-black uppercase text-orange-900">
-                                        <AlertTriangle className="h-5 w-5" /> Saldo Pendiente
-                                      </p>
-                                      <p className="text-xs font-semibold text-orange-800">Debe abonar al entregar</p>
-                                    </div>
-                                    <p className="text-4xl font-black tabular-nums text-orange-900">{formatCurrency(document.balance)}</p>
-                                  </div>
-                                </div>
-                              )}
-                              {document.balance === 0 && document.amountPaid && document.amountPaid > 0 && (
-                                <div className="rounded-xl border-2 border-emerald-500 bg-gradient-to-br from-emerald-100 to-green-100 p-4 text-center shadow-md">
-                                  <CheckCircle className="mx-auto mb-2 h-12 w-12 text-emerald-600" />
-                                  <p className="text-lg font-black uppercase text-emerald-900">Pago Completo</p>
-                                  <p className="text-xs font-semibold text-emerald-800">Sin saldo pendiente</p>
-                                </div>
-                              )}
-                              {(!document.amountPaid || document.amountPaid === 0) && (
-                                <div className="rounded-xl border-2 border-blue-400 bg-gradient-to-br from-blue-100 to-cyan-100 p-3 shadow-sm">
-                                  <div className="flex items-center gap-2.5">
-                                    <Receipt className="h-6 w-6 text-blue-700" />
-                                    <div>
-                                      <p className="text-sm font-bold text-blue-900">A Cuenta</p>
-                                      <p className="text-xs font-semibold text-blue-700">Sin pago registrado - Total adeudado: {formatCurrency(document.total)}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                              {document.installments && document.installments > 1 && (
-                                <div className="rounded-lg bg-blue-50 px-3 py-2 text-center shadow-sm">
-                                  <p className="text-sm font-bold text-blue-900">
-                                    💳 {document.installments} cuotas de {formatCurrency(Math.round(document.total / document.installments))}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Footer info */}
-                    <div className="mt-8 space-y-4 rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50 to-blue-50/30 p-5 shadow-sm">
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="flex items-start gap-2.5 rounded-lg bg-white/80 p-3 shadow-sm">
-                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-orange-100">
-                            <Truck className="h-5 w-5 text-orange-700" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold uppercase text-slate-500">Envío</p>
-                            <p className="text-sm font-semibold leading-tight text-slate-900">{document.shippingType}</p>
-                          </div>
-                        </div>
-                        {hasCatalogoItems && (
-                          <div className="flex items-start gap-2.5 rounded-lg bg-white/80 p-3 shadow-sm">
-                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100">
-                              <Clock className="h-5 w-5 text-blue-700" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs font-bold uppercase text-slate-500">Entrega</p>
-                              <p className="text-sm font-semibold leading-tight text-slate-900">7-10 días</p>
-                            </div>
-                          </div>
-                        )}
-                        <div className="flex items-start gap-2.5 rounded-lg bg-white/80 p-3 shadow-sm">
-                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-100">
-                            <ShieldCheck className="h-5 w-5 text-emerald-700" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold uppercase text-slate-500">Garantía</p>
-                            <p className="text-sm font-semibold leading-tight text-slate-900">Oficial PIERO</p>
-                          </div>
-                        </div>
-                      </div>
-                      {document.observations && (
-                        <div className="rounded-lg border-l-4 border-blue-600 bg-white p-4 shadow-sm">
-                          <p className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">Observaciones</p>
-                          <p className="text-sm leading-relaxed text-slate-700">{document.observations}</p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-4 md:space-y-6">
-              {/* Acciones de Estado */}
-              <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-emerald-500/5 backdrop-blur-sm">
-                <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-emerald-50/50 p-4 md:pb-4">
-                  <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900 md:gap-2.5 md:text-lg">
-                    <div className="rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 p-1.5 shadow-lg shadow-emerald-500/20 md:p-2">
-                      <Sparkles className="h-4 w-4 text-white md:h-5 md:w-5" />
-                    </div>
-                    Acciones
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2.5 p-4 md:space-y-3 md:p-6">
-                  {document.status === "DRAFT" && (
+          {/* Sidebar */}
+          <aside className="space-y-3">
+            {/* Acciones */}
+            <Section title="Acciones">
+              <div className="space-y-2">
+                {document.status === "DRAFT" && (
+                  <Button
+                    className="w-full justify-between"
+                    onClick={() => { sendWhatsApp(); updateStatus("SENT") }}
+                    disabled={isUpdating}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Send className="h-4 w-4" />
+                      {isUpdating ? "Enviando…" : "Enviar al cliente"}
+                    </span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )}
+                {document.status === "SENT" && (
+                  <>
                     <Button
-                      className="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-sm font-bold shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 md:text-base"
-                      onClick={() => { sendWhatsApp(); updateStatus("SENT") }}
+                      className="w-full justify-between"
+                      onClick={() => updateStatus("APPROVED")}
                       disabled={isUpdating}
                     >
-                      <Send className="mr-2 h-4 w-4" />
-                      {isUpdating ? "Enviando..." : "Enviar al Cliente"}
+                      <span className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4" />
+                        Marcar aprobado
+                      </span>
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
-                  )}
-                  {document.status === "SENT" && (
-                    <>
-                      <Button className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-sm font-bold shadow-lg shadow-blue-500/25 transition-all hover:scale-105 disabled:opacity-50 md:text-base"
-                        onClick={() => updateStatus("APPROVED")} disabled={isUpdating}>
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        {isUpdating ? "Procesando..." : "Marcar como Aprobado"}
-                      </Button>
-                      <Button variant="outline" className="w-full border-red-200 bg-white/50 text-sm font-semibold text-red-600 transition-all hover:scale-105 hover:border-red-300 hover:bg-red-50 disabled:opacity-50 md:text-base"
-                        onClick={() => updateStatus("CANCELLED")} disabled={isUpdating}>
-                        <XCircle className="mr-2 h-4 w-4" />
-                        Cancelar
-                      </Button>
-                    </>
-                  )}
-                  {document.status === "APPROVED" && (
-                    <Button className="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-sm font-bold shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 disabled:opacity-50 md:text-base"
-                      onClick={() => updateStatus("COMPLETED")} disabled={isUpdating}>
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      {isUpdating ? "Procesando..." : "Marcar como Completado"}
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-2 text-red-600 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => updateStatus("CANCELLED")}
+                      disabled={isUpdating}
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Cancelar
                     </Button>
-                  )}
-                  {document.type === "PRESUPUESTO" && document.status === "APPROVED" && (
-                    <Link href={`/documentos/nuevo?from=${document.id}&tipo=recibo`}>
-                      <Button variant="outline" className="w-full border-slate-200 bg-white/50 text-sm font-semibold transition-all hover:scale-105 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 md:text-base">
-                        Convertir a Recibo
-                      </Button>
-                    </Link>
-                  )}
-                  {document.type === "RECIBO" && document.status === "COMPLETED" && (
-                    <Button variant="outline"
-                      className="w-full border-orange-200 bg-orange-50/50 text-sm font-semibold text-orange-700 transition-all hover:scale-105 hover:border-orange-400 hover:bg-orange-100 hover:text-orange-800 md:text-base"
-                      onClick={notifyDelivery}>
-                      <Truck className="mr-2 h-4 w-4" />
-                      Notificar Remito
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Estado de Pago */}
-              {document.type === "RECIBO" && (
-                <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-blue-500/5 backdrop-blur-sm">
-                  <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-blue-50/50 p-4 md:pb-4">
-                    <CardTitle className="flex items-center gap-2 text-sm font-bold text-slate-900 md:gap-2.5 md:text-base">
-                      <div className="rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 p-1 shadow-lg shadow-blue-500/20 md:p-1.5">
-                        <DollarSign className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
-                      </div>
-                      Estado de Pago
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 p-4 md:space-y-3.5 md:p-5">
-                    {document.paymentType && (
-                      <div className="rounded-lg bg-slate-50 p-3">
-                        <p className="text-xs font-semibold text-slate-500">Método de Pago</p>
-                        <p className="text-sm font-bold text-slate-900">{document.paymentType}</p>
-                      </div>
-                    )}
-                    {document.amountPaid !== undefined && document.amountPaid > 0 && (
-                      <div className="rounded-lg bg-emerald-50 p-3">
-                        <p className="text-xs font-semibold text-emerald-700">Monto Pagado</p>
-                        <p className="text-2xl font-bold text-emerald-900">{formatCurrency(document.amountPaid)}</p>
-                      </div>
-                    )}
-                    {document.balance !== undefined && document.balance > 0 ? (
-                      <div className="rounded-xl border-2 border-orange-300 bg-gradient-to-br from-orange-100 to-amber-100 p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="flex items-center gap-1.5 text-sm font-bold text-orange-900">
-                              <AlertTriangle className="h-4 w-4" /> Saldo Pendiente
-                            </p>
-                            <p className="text-xs text-orange-700">A cobrar al cliente</p>
-                          </div>
-                          <p className="text-3xl font-bold text-orange-900">{formatCurrency(document.balance)}</p>
-                        </div>
-                      </div>
-                    ) : document.amountPaid !== undefined && document.amountPaid > 0 ? (
-                      <div className="rounded-xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-100 to-green-100 p-4 text-center">
-                        <CheckCircle className="mx-auto mb-2 h-10 w-10 text-emerald-600" />
-                        <p className="text-lg font-bold text-emerald-900">Pago Completo</p>
-                        <p className="text-xs text-emerald-700">Sin saldo pendiente</p>
-                      </div>
-                    ) : null}
-                    {(!document.amountPaid || document.amountPaid === 0) && (
-                      <div className="rounded-xl border-2 border-blue-300/50 bg-gradient-to-br from-blue-100/80 to-cyan-100/60 p-3 shadow-inner">
-                        <div className="flex items-center gap-2">
-                          <Receipt className="h-5 w-5 text-blue-600" />
-                          <div>
-                            <p className="text-sm font-bold text-blue-900">A Cuenta</p>
-                            <p className="text-xs text-blue-700">Sin pago registrado</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Info del Cliente */}
-              <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-violet-500/5 backdrop-blur-sm">
-                <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-violet-50/50 p-4 md:pb-4">
-                  <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900 md:gap-2.5 md:text-lg">
-                    <div className="rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 p-1.5 shadow-lg shadow-violet-500/20 md:p-2">
-                      <User className="h-4 w-4 text-white md:h-5 md:w-5" />
-                    </div>
-                    Cliente
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 md:p-6">
-                  <div className="mb-3 space-y-1.5 md:mb-4 md:space-y-2">
-                    <p className="text-base font-bold text-slate-900 md:text-lg">{document.client.name}</p>
-                    <div className="space-y-0.5 text-xs text-slate-600 md:space-y-1 md:text-sm">
-                      <p className="font-medium">{document.client.phone}</p>
-                      {document.client.email && <p className="truncate">{document.client.email}</p>}
-                      {document.client.address && <p className="truncate">{document.client.address}, {document.client.city}</p>}
-                    </div>
-                  </div>
+                  </>
+                )}
+                {document.status === "APPROVED" && (
                   <Button
-                    variant="outline" size="sm"
-                    className="w-full border-slate-200 bg-white/50 text-xs font-semibold transition-all hover:scale-105 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 md:text-sm"
-                    onClick={() => {
-                      const url = generateWhatsAppLink(document.client.phone, `Hola ${document.client.name}!`)
-                      window.open(url, "_blank")
-                    }}
+                    className="w-full justify-between"
+                    onClick={() => updateStatus("COMPLETED")}
+                    disabled={isUpdating}
                   >
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    Contactar por WhatsApp
+                    <span className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4" />
+                      Marcar completado
+                    </span>
+                    <ChevronRight className="h-4 w-4" />
                   </Button>
-                </CardContent>
-              </Card>
+                )}
+                {document.type === "PRESUPUESTO" && document.status === "APPROVED" && (
+                  <Link href={`/documentos/nuevo?from=${document.id}&tipo=recibo`}>
+                    <Button variant="outline" className="w-full">
+                      Convertir a recibo
+                    </Button>
+                  </Link>
+                )}
+                {document.type === "RECIBO" && document.status === "COMPLETED" && (
+                  <Button variant="outline" className="w-full justify-start gap-2" onClick={notifyDelivery}>
+                    <Truck className="h-4 w-4" />
+                    Notificar reparto
+                  </Button>
+                )}
+              </div>
+            </Section>
 
-              {/* Notas Internas */}
-              {document.internalNotes && (
-                <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-amber-500/5 backdrop-blur-sm">
-                  <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-amber-50/50 p-4 md:pb-4">
-                    <CardTitle className="flex items-center gap-2 text-sm font-bold text-slate-900 md:gap-2.5 md:text-base">
-                      <div className="rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 p-1 shadow-lg shadow-amber-500/20 md:p-1.5">
-                        <MessageCircle className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
-                      </div>
-                      Notas Internas
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 md:p-5">
-                    <div className="rounded-lg bg-amber-50/50 p-3 backdrop-blur-sm md:p-4">
-                      <p className="text-xs leading-relaxed text-slate-700 md:text-sm">{document.internalNotes}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+            {/* Cliente */}
+            <Section title="Cliente">
+              <p className="font-medium">{document.client.name}</p>
+              <div className="mt-1 space-y-0.5 text-sm text-neutral-600">
+                <p>{document.client.phone}</p>
+                {document.client.email && <p className="truncate">{document.client.email}</p>}
+                {document.client.address && (
+                  <p className="truncate">{document.client.address}, {document.client.city}</p>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 w-full gap-1.5"
+                onClick={() => {
+                  const url = generateWhatsAppLink(document.client.phone, `Hola ${document.client.name}!`)
+                  window.open(url, "_blank")
+                }}
+              >
+                <MessageCircle className="h-4 w-4" />
+                Contactar
+              </Button>
+            </Section>
 
-              {/* Info de Entrega */}
-              <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl shadow-blue-500/5 backdrop-blur-sm">
-                <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-blue-50/50 p-4 md:pb-4">
-                  <CardTitle className="flex items-center gap-2 text-sm font-bold text-slate-900 md:gap-2.5 md:text-base">
-                    <div className="rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 p-1 shadow-lg shadow-blue-500/20 md:p-1.5">
-                      <Package className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
-                    </div>
-                    Información de Entrega
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2.5 p-4 md:space-y-3 md:p-5">
-                  {hasStockItems && (
-                    <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-2.5 md:gap-2.5 md:p-3">
-                      <div className="rounded-lg bg-emerald-100 p-1.5 md:p-2">
-                        <Warehouse className="h-3.5 w-3.5 text-emerald-600 md:h-4 md:w-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-emerald-900 md:text-sm">En Stock</p>
-                        <p className="text-[10px] text-emerald-700 md:text-xs">Entrega inmediata</p>
-                      </div>
-                    </div>
-                  )}
-                  {hasCatalogoItems && (
-                    <div className="flex items-center gap-2 rounded-lg bg-blue-50 p-2.5 md:gap-2.5 md:p-3">
-                      <div className="rounded-lg bg-blue-100 p-1.5 md:p-2">
-                        <Truck className="h-3.5 w-3.5 text-blue-600 md:h-4 md:w-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-blue-900 md:text-sm">Catálogo</p>
-                        <p className="text-[10px] text-blue-700 md:text-xs">7-10 días hábiles</p>
-                      </div>
-                    </div>
-                  )}
-                  <div className="rounded-lg bg-slate-50 p-2.5 md:p-3">
-                    <p className="text-xs font-semibold text-slate-700 md:text-sm">{document.shippingType}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+            {/* Notas internas */}
+            {document.internalNotes && (
+              <Section title="Notas internas">
+                <p className="text-sm leading-relaxed text-neutral-700">{document.internalNotes}</p>
+              </Section>
+            )}
+
+            {/* Entrega */}
+            <Section title="Entrega">
+              <div className="space-y-2">
+                {hasStockItems && (
+                  <Row icon={Warehouse} title="En stock" subtitle="Entrega inmediata" />
+                )}
+                {hasCatalogoItems && (
+                  <Row icon={Truck} title="Catálogo" subtitle="7-10 días hábiles" />
+                )}
+                <Row icon={Package} title={document.shippingType} subtitle="" />
+                {document.type === "PRESUPUESTO" && document.validUntil && (
+                  <Row icon={Clock} title="Válido hasta" subtitle={formatDate(document.validUntil)} />
+                )}
+              </div>
+            </Section>
+          </aside>
         </div>
       </div>
 
-      {/* PRINT-SPECIFIC STYLES */}
+      {/* PRINT STYLES (sin cambios — críticos para PDF físico) */}
       <style jsx global>{`
         .print-document { display: none; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
         @media print {
           @page { size: A4 portrait; margin: 10mm 12mm 10mm 12mm; }
@@ -858,5 +664,36 @@ export default function DocumentoPage({ params }: { params: Promise<{ id: string
         }
       `}</style>
     </>
+  )
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+      <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500">{title}</h3>
+      {children}
+    </div>
+  )
+}
+
+function Row({
+  icon: Icon,
+  title,
+  subtitle,
+}: {
+  icon: typeof Clock
+  title: string
+  subtitle: string
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-100">
+        <Icon className="h-4 w-4 text-neutral-700" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-neutral-900">{title}</p>
+        {subtitle && <p className="truncate text-xs text-neutral-500">{subtitle}</p>}
+      </div>
+    </div>
   )
 }
