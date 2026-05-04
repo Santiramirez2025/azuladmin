@@ -75,5 +75,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    // Excluir APIs de auth, archivos de Next, y assets públicos
+    // (manifest, service worker, iconos, fuentes — necesarios para PWA sin auth)
+    "/((?!api/auth|_next/static|_next/image|favicon\\.png|favicon\\.ico|manifest\\.json|sw\\.js|icons/|robots\\.txt|sitemap\\.xml).*)",
+  ],
 }
