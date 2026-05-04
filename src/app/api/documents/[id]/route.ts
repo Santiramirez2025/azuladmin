@@ -17,6 +17,22 @@ export const runtime = "nodejs"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
+type DocStatus = "DRAFT" | "SENT" | "APPROVED" | "COMPLETED" | "CANCELLED" | "EXPIRED"
+
+const ALLOWED_TRANSITIONS: Record<DocStatus, DocStatus[]> = {
+  DRAFT: ["SENT", "CANCELLED"],
+  SENT: ["APPROVED", "CANCELLED", "EXPIRED"],
+  APPROVED: ["COMPLETED", "CANCELLED"],
+  COMPLETED: ["CANCELLED"],
+  CANCELLED: [],
+  EXPIRED: ["CANCELLED"],
+}
+
+function isValidTransition(from: DocStatus, to: DocStatus): boolean {
+  if (from === to) return true
+  return ALLOWED_TRANSITIONS[from]?.includes(to) ?? false
+}
+
 type SerializableDocument = {
   subtotal: Prisma.Decimal
   surcharge: Prisma.Decimal
@@ -129,8 +145,15 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       const updateData: Prisma.DocumentUpdateInput = {}
 
       if (data.status) {
-        const oldStatus = existing.status
-        const newStatus = data.status
+        const oldStatus = existing.status as DocStatus
+        const newStatus = data.status as DocStatus
+
+        if (!isValidTransition(oldStatus, newStatus)) {
+          throw new Error(
+            `Transición no permitida: ${oldStatus} → ${newStatus}. ` +
+              `Estados válidos desde ${oldStatus}: ${ALLOWED_TRANSITIONS[oldStatus].join(", ") || "ninguno"}`,
+          )
+        }
 
         if (
           newStatus === "COMPLETED" &&

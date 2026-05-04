@@ -59,17 +59,40 @@ export default function ConfiguracionPage() {
   const [seedStatus, setSeedStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
 
   useEffect(() => {
+    let cancelled = false
     const loadConfig = async () => {
       try {
-        const savedCompany = localStorage.getItem("azul_company_info")
-        if (savedCompany) {
-          setCompanyInfo(JSON.parse(savedCompany))
+        const res = await fetch("/api/settings/company")
+        if (res.ok && !cancelled) {
+          const data = await res.json()
+          setCompanyInfo(data)
+
+          // Migración silenciosa: si hay datos en localStorage y la DB tiene
+          // los defaults, migrar y limpiar localStorage.
+          try {
+            const legacy = localStorage.getItem("azul_company_info")
+            if (legacy && data.name === "Azul Colchones" && !data.cuit) {
+              const parsed = JSON.parse(legacy)
+              await fetch("/api/settings/company", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(parsed),
+              })
+              setCompanyInfo(parsed)
+              localStorage.removeItem("azul_company_info")
+            }
+          } catch (migrationErr) {
+            console.error("Migration error (non-fatal):", migrationErr)
+          }
         }
       } catch (error) {
         console.error("Error loading config:", error)
       }
     }
     loadConfig()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -79,19 +102,28 @@ export default function ConfiguracionPage() {
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      // Guardar company info en localStorage
-      localStorage.setItem("azul_company_info", JSON.stringify(companyInfo))
-      
-      // Guardar payment rates en la base de datos
-      const success = await saveRates(localRates)
-      
-      if (success) {
-        toast.success("Configuración guardada correctamente")
-        setSaved(true)
-        setTimeout(() => setSaved(false), 2000)
-      } else {
-        toast.error("Error al guardar las tasas de pago")
+      const [companyRes, ratesOk] = await Promise.all([
+        fetch("/api/settings/company", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(companyInfo),
+        }),
+        saveRates(localRates),
+      ])
+
+      if (!companyRes.ok) {
+        const error = await companyRes.json().catch(() => ({}))
+        toast.error(error.error || "Error al guardar info de empresa")
+        return
       }
+      if (!ratesOk) {
+        toast.error("Error al guardar las tasas de pago")
+        return
+      }
+
+      toast.success("Configuración guardada correctamente")
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
     } catch (error) {
       console.error("Error saving config:", error)
       toast.error("Error al guardar la configuración")

@@ -14,7 +14,9 @@ export async function GET(request: NextRequest) {
       orderBy: { order: "asc" },
       include: { _count: { select: { products: true } } },
     })
-    return NextResponse.json(categories)
+    return NextResponse.json(categories, {
+      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+    })
   } catch (error) {
     return handleUnknownError("categories.GET", error)
   }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { paymentRatesSchema } from "@/lib/validations"
+import { companyInfoSchema } from "@/lib/validations"
 import {
   handleUnknownError,
   isAuthError,
@@ -10,22 +10,31 @@ import {
 
 export const runtime = "nodejs"
 
-const DEFAULT_RATES = { "1": 0, "3": 18, "6": 25, "9": 35, "12": 47 }
+const KEY = "company_info"
+
+const DEFAULT_COMPANY = {
+  name: "Azul Colchones",
+  address: "Balerdi 855",
+  city: "Villa María",
+  province: "Córdoba",
+  phone: "0353-4XXXXXX",
+  whatsapp: "+5493534XXXXXX",
+  email: "info@azulcolchones.com",
+  cuit: "",
+}
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request)
   if (isAuthError(auth)) return auth
 
   try {
-    const settings = await prisma.setting.findUnique({
-      where: { key: "payment_rates" },
-    })
-    return NextResponse.json(settings?.value ?? DEFAULT_RATES, {
+    const setting = await prisma.setting.findUnique({ where: { key: KEY } })
+    return NextResponse.json(setting?.value ?? DEFAULT_COMPANY, {
       headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=900" },
     })
   } catch (error) {
-    console.error("[settings.GET]", error)
-    return NextResponse.json(DEFAULT_RATES)
+    console.error("[settings.company.GET]", error)
+    return NextResponse.json(DEFAULT_COMPANY)
   }
 }
 
@@ -33,17 +42,17 @@ export async function POST(request: NextRequest) {
   const auth = await requireAdmin(request)
   if (isAuthError(auth)) return auth
 
-  const parsed = await parseJson(request, paymentRatesSchema)
+  const parsed = await parseJson(request, companyInfoSchema)
   if (!parsed.ok) return parsed.response
 
   try {
     const setting = await prisma.setting.upsert({
-      where: { key: "payment_rates" },
-      create: { key: "payment_rates", value: parsed.data },
+      where: { key: KEY },
+      create: { key: KEY, value: parsed.data },
       update: { value: parsed.data },
     })
     return NextResponse.json(setting.value)
   } catch (error) {
-    return handleUnknownError("settings.POST", error)
+    return handleUnknownError("settings.company.POST", error)
   }
 }

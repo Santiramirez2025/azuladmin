@@ -299,6 +299,9 @@ export async function POST(request: NextRequest) {
       }
 
       const validUntilDate = data.validUntil ? new Date(data.validUntil) : null
+      if (data.type === "PRESUPUESTO" && validUntilDate && validUntilDate.getTime() <= Date.now()) {
+        throw new Error("La fecha de validez del presupuesto debe ser posterior a hoy")
+      }
 
       const newDocument = await tx.document.create({
         data: {
