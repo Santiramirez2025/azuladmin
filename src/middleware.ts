@@ -42,13 +42,13 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isLoginPath = pathname.startsWith("/login")
   const isApi = pathname.startsWith("/api/")
+  const isDeliveryAccess = pathname.startsWith("/api/delivery/access")
   const isDeliveryRoute = pathname.startsWith("/reparto") || pathname.startsWith("/api/delivery")
-  const isDeliveryAccess = pathname.startsWith("/reparto/acceso")
   const isDeliveryApi = pathname.startsWith("/api/delivery")
 
   // ─── Rutas de la app de reparto ───────────────────────────────────────────
   if (isDeliveryRoute) {
-    // /reparto/acceso/[token] es público (lo valida el endpoint)
+    // /api/delivery/access es público (es el endpoint que setea la cookie)
     if (isDeliveryAccess) return NextResponse.next()
 
     const expected = getDeliveryToken()
