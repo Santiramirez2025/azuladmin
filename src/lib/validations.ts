@@ -422,4 +422,13 @@ export const pushSendSchema = z.object({
   tag: z.string().max(100).optional(),
 })
 
+export const pushBroadcastSchema = z.object({
+  title: z.string().min(1, "El título es requerido").max(200),
+  body: z.string().min(1, "El mensaje es requerido").max(500),
+  url: z.string().max(500).optional(),
+  target: z.enum(["ADMIN", "DELIVERY", "ALL"]).default("ALL"),
+})
+
+export type PushBroadcastInput = z.infer<typeof pushBroadcastSchema>
+
 export type PushSubscriptionInput = z.infer<typeof pushSubscriptionSchema>

@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { usePaymentRates } from "@/hooks/use-payment-rates"
 import { PageHeader, PageShell, Section } from "@/components/ui/page-shell"
 import { PushNotificationsCard } from "./_components/PushNotificationsCard"
+import { SendNotificationCard } from "./_components/SendNotificationCard"
 
 interface CompanyInfo {
   name: string
@@ -134,8 +135,9 @@ export default function ConfiguracionPage() {
         }
       />
 
-      <div className="mb-4">
+      <div className="mb-4 grid gap-4 lg:grid-cols-2">
         <PushNotificationsCard />
+        <SendNotificationCard />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
