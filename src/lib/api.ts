@@ -25,6 +25,29 @@ export async function requireAdmin(request: Request): Promise<AuthUser | NextRes
   }
 }
 
+/**
+ * Verifica que el request tenga la cookie delivery-token con el valor correcto.
+ * Esta cookie se setea cuando el primo abre la URL secreta /reparto/acceso/<token>.
+ */
+export function requireDelivery(request: Request): NextResponse | null {
+  const expected = process.env.DELIVERY_ACCESS_TOKEN
+  if (!expected || expected.length < 16) {
+    return errorResponse(500, "DELIVERY_ACCESS_TOKEN no configurado")
+  }
+  const cookie = request.headers.get("cookie") ?? ""
+  const match = cookie.match(/(?:^|;\s*)delivery-token=([^;]+)/)
+  const provided = match ? decodeURIComponent(match[1]) : null
+  if (!provided) return errorResponse(401, "Acceso no autorizado")
+  // Comparison constant-time
+  const a = Buffer.from(provided, "utf8")
+  const b = Buffer.from(expected, "utf8")
+  if (a.length !== b.length) return errorResponse(401, "Token inválido")
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]
+  if (diff !== 0) return errorResponse(401, "Token inválido")
+  return null
+}
+
 function payloadToUser(payload: JWTPayload): AuthUser {
   return {
     sub: typeof payload.sub === "string" ? payload.sub : "",

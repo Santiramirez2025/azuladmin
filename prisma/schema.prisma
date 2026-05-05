@@ -175,6 +175,12 @@ model Document {
   convertedFromId String?
   convertedTo     Document[]      @relation("DocumentConversion")
 
+  // Firma digital del cliente al recibir un REMITO
+  signatureImage  String?         @db.Text  // PNG base64
+  signedAt        DateTime?
+  signerName      String?
+  signerDni       String?
+
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -182,11 +188,12 @@ model Document {
   @@index([userId])
   @@index([type])
   @@index([status])
-  @@index([date(sort: Desc)]) // Optimizar consultas por fecha
-  @@index([number(sort: Desc)]) // Optimizar búsqueda por número
-  @@index([type, status]) // Consultas combinadas frecuentes
+  @@index([date(sort: Desc)])
+  @@index([number(sort: Desc)])
+  @@index([type, status])
   @@index([convertedFromId])
-  @@index([paymentMethod]) // NUEVO: Índice para consultas por método de pago
+  @@index([paymentMethod])
+  @@index([signedAt]) // queries de remitos firmados/sin firmar
   @@map("documents")
 }
 
@@ -268,11 +275,13 @@ model PushSubscription {
   p256dh    String
   auth      String
   userAgent String?
-  username  String?  // a quién pertenece la suscripción (admin username del JWT)
+  username  String?  // "admin" o "delivery"
+  role      String?  // ADMIN o DELIVERY
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([username])
+  @@index([role])
   @@index([createdAt])
   @@map("push_subscriptions")
 }

@@ -36,6 +36,10 @@ export interface PdfDocumentData {
   shippingCost: Decimal
   amountPaid: Decimal | null
   balance: Decimal | null
+  signatureImage?: string | null
+  signedAt?: Date | null
+  signerName?: string | null
+  signerDni?: string | null
   client: {
     name: string
     phone: string
@@ -416,13 +420,41 @@ function drawSignatures(pdf: Pdf, doc: PdfDocumentData, leftMargin: number, righ
     .text("Aclaración: ________________________________", sigLeftX, lineY + 18, { width: sigColWidth, align: "center" })
 
   if (doc.type !== "PRESUPUESTO") {
+    // Si el remito está firmado digitalmente, dibujar la imagen de la firma
+    const hasSignature =
+      doc.type === "REMITO" && doc.signatureImage && doc.signatureImage.startsWith("data:image/png;base64,")
+
+    if (hasSignature) {
+      try {
+        const base64 = doc.signatureImage!.replace(/^data:image\/png;base64,/, "")
+        const imgBuffer = Buffer.from(base64, "base64")
+        // Posicionar firma sobre la línea
+        pdf.image(imgBuffer, sigRightX, lineY - 38, {
+          fit: [sigColWidth, 38],
+          align: "center",
+        })
+      } catch (err) {
+        console.error("[pdf] error embedding signature:", err)
+      }
+    }
+
     pdf.moveTo(sigRightX, lineY).lineTo(sigRightX + sigColWidth, lineY).lineWidth(0.8).strokeColor(COLORS.dark).stroke()
     pdf.font("Helvetica-Bold").fontSize(8).fillColor(COLORS.dark)
       .text(doc.type === "REMITO" ? "Recibí conforme" : "Firma Cliente", sigRightX, lineY + 5, { width: sigColWidth, align: "center" })
     pdf.font("Helvetica").fontSize(7).fillColor(COLORS.secondary)
-      .text("Aclaración: ________________________________", sigRightX, lineY + 18, { width: sigColWidth, align: "center" })
+      .text(
+        doc.signerName ? `Aclaración: ${doc.signerName}` : "Aclaración: ________________________________",
+        sigRightX,
+        lineY + 18,
+        { width: sigColWidth, align: "center" },
+      )
     if (doc.type === "REMITO") {
-      pdf.text("DNI: _______________________", sigRightX, lineY + 28, { width: sigColWidth, align: "center" })
+      pdf.text(
+        doc.signerDni ? `DNI: ${doc.signerDni}` : "DNI: _______________________",
+        sigRightX,
+        lineY + 28,
+        { width: sigColWidth, align: "center" },
+      )
     }
   }
 }

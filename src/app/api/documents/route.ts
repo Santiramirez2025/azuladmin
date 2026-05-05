@@ -375,26 +375,47 @@ export async function POST(request: NextRequest) {
     if (document.type === "RECIBO") {
       const balance = document.balance ? decimalToNumber(document.balance) : 0
       const isPaid = balance === 0 && document.amountPaid && decimalToNumber(document.amountPaid) > 0
-      notifyAsync({
-        title: isPaid ? "💰 Venta cobrada" : "🧾 Nuevo recibo",
-        body: `${document.client.name} · ${totalFmt}` + (isPaid ? "" : ` · saldo ${new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(balance)}`),
-        url: `/documentos/${document.id}`,
-        tag: `doc-${document.id}`,
-      })
+      notifyAsync(
+        {
+          title: isPaid ? "💰 Venta cobrada" : "🧾 Nuevo recibo",
+          body:
+            `${document.client.name} · ${totalFmt}` +
+            (isPaid
+              ? ""
+              : ` · saldo ${new Intl.NumberFormat("es-AR", {
+                  style: "currency",
+                  currency: "ARS",
+                  maximumFractionDigits: 0,
+                }).format(balance)}`),
+          url: `/documentos/${document.id}`,
+          tag: `doc-${document.id}`,
+        },
+        { role: "ADMIN" },
+      )
     } else if (document.type === "PRESUPUESTO") {
-      notifyAsync({
-        title: "📋 Nuevo presupuesto",
-        body: `${document.client.name} · ${totalFmt}`,
-        url: `/documentos/${document.id}`,
-        tag: `doc-${document.id}`,
-      })
+      notifyAsync(
+        {
+          title: "📋 Nuevo presupuesto",
+          body: `${document.client.name} · ${totalFmt}`,
+          url: `/documentos/${document.id}`,
+          tag: `doc-${document.id}`,
+        },
+        { role: "ADMIN" },
+      )
     } else if (document.type === "REMITO") {
-      notifyAsync({
-        title: "📦 Nuevo remito",
-        body: `${document.client.name} · ${docNumber}`,
-        url: `/documentos/${document.id}`,
-        tag: `doc-${document.id}`,
-      })
+      // El remito notifica al PRIMO (rol DELIVERY), no al admin
+      const addr = document.client.address
+        ? `${document.client.address}, ${document.client.city}`
+        : document.client.city
+      notifyAsync(
+        {
+          title: "🚚 Nueva entrega",
+          body: `${document.client.name} · ${addr}`,
+          url: `/reparto/${document.id}`,
+          tag: `remito-${document.id}`,
+        },
+        { role: "DELIVERY" },
+      )
     }
 
     return NextResponse.json(response, { status: 201 })

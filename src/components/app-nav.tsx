@@ -39,7 +39,8 @@ function isActive(pathname: string, item: NavItem): boolean {
 export function AppNav() {
   const pathname = usePathname()
   const isLogin = pathname === "/login"
-  if (isLogin) return null
+  const isDelivery = pathname.startsWith("/reparto")
+  if (isLogin || isDelivery) return null
 
   return (
     <>

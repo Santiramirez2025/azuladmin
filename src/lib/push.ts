@@ -25,15 +25,30 @@ export interface PushPayload {
   tag?: string
 }
 
+type SendOptions = { username?: string; role?: string }
+
 /**
- * Envía la misma notificación a todas las suscripciones (o las del usuario indicado).
+ * Envía la misma notificación a todas las suscripciones que matcheen.
+ * - Sin filtros: a todas
+ * - { username }: solo al usuario
+ * - { role: "DELIVERY" }: solo a las del primo
+ * - { role: "ADMIN" }: solo a vos (excluye DELIVERY)
  * Limpia automáticamente subscriptions con 404/410 (gone).
  */
-export async function sendPushToAll(payload: PushPayload, username?: string): Promise<{ sent: number; failed: number }> {
+export async function sendPushToAll(
+  payload: PushPayload,
+  options?: SendOptions | string,
+): Promise<{ sent: number; failed: number }> {
   if (!ensureVapidConfigured()) return { sent: 0, failed: 0 }
 
+  // Compat: si se pasa string, tratar como username
+  const opts: SendOptions = typeof options === "string" ? { username: options } : options ?? {}
+  const where: { username?: string; role?: string } = {}
+  if (opts.username) where.username = opts.username
+  if (opts.role) where.role = opts.role
+
   const subscriptions = await prisma.pushSubscription.findMany({
-    where: username ? { username } : undefined,
+    where: Object.keys(where).length > 0 ? where : undefined,
   })
 
   let sent = 0
@@ -75,8 +90,8 @@ export async function sendPushToAll(payload: PushPayload, username?: string): Pr
  * Envío fire-and-forget: no bloquea la respuesta del request principal.
  * Para usar dentro de endpoints sin await.
  */
-export function notifyAsync(payload: PushPayload, username?: string): void {
-  sendPushToAll(payload, username).catch((err) => {
+export function notifyAsync(payload: PushPayload, options?: SendOptions | string): void {
+  sendPushToAll(payload, options).catch((err) => {
     console.error("[push] notifyAsync error:", err)
   })
 }

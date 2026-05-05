@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { AppNav } from "@/components/app-nav"
+import { AppShell } from "@/components/app-shell"
 import { ServiceWorkerRegister } from "@/components/sw-register"
 
 const inter = Inter({
@@ -53,8 +53,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={inter.variable}>
       <body className="min-h-screen bg-white font-sans text-neutral-900 antialiased">
-        <AppNav />
-        <main className="min-h-screen pt-14 pb-20 md:pb-0 md:pl-60">{children}</main>
+        <AppShell>{children}</AppShell>
         <ServiceWorkerRegister />
       </body>
     </html>
