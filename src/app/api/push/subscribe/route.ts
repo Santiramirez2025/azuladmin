@@ -27,12 +27,14 @@ export async function POST(request: NextRequest) {
         auth: keys.auth,
         userAgent: userAgent ?? null,
         username: auth.sub,
+        role: "ADMIN",
       },
       update: {
         p256dh: keys.p256dh,
         auth: keys.auth,
         userAgent: userAgent ?? null,
         username: auth.sub,
+        role: "ADMIN",
       },
     })
     return NextResponse.json({ ok: true, id: sub.id }, { status: 201 })
