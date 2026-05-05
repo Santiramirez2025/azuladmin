@@ -54,22 +54,24 @@ import type { Client, DocumentItem, DocumentType, PaymentMethod } from "./_lib/t
 
 function FormSkeleton() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 p-4 pt-20 md:p-8 md:pt-8">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-xl" />
-          <div className="flex-1">
-            <Skeleton className="mb-2 h-6 w-40" />
-            <Skeleton className="h-3 w-52" />
-          </div>
+    <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8">
+      <div className="mb-6 flex items-center gap-3">
+        <Skeleton className="h-10 w-10 rounded-lg" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-3 w-52" />
         </div>
-        <div className="space-y-4 md:grid md:gap-6 md:space-y-0 lg:grid-cols-3">
-          <div className="space-y-4 lg:col-span-2">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
-          </div>
-          <div className="space-y-4">
-            {[1, 2].map((i) => <Skeleton key={i} className="h-48 w-full rounded-2xl" />)}
-          </div>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-40 w-full rounded-2xl" />
+          ))}
+        </div>
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <Skeleton key={i} className="h-48 w-full rounded-2xl" />
+          ))}
         </div>
       </div>
     </div>
@@ -79,30 +81,25 @@ function FormSkeleton() {
 // ─── Wrapper de Card reutilizable ─────────────────────────────────────────────
 
 function SectionCard({
-  title, icon: Icon, gradient, children,
+  title,
+  icon: Icon,
+  children,
 }: {
   title: string
   icon: React.ElementType
-  gradient: string   // Ej: "from-blue-500 to-indigo-600"
+  gradient?: string // ignorado, mantenido por compatibilidad
   children: React.ReactNode
 }) {
   return (
-    <div className="group relative">
-      <div className={cn("absolute -inset-0.5 rounded-2xl bg-gradient-to-r opacity-20 blur transition duration-500 group-hover:opacity-30", gradient)} />
-      <Card className="relative overflow-hidden border-0 bg-white/80 shadow-xl backdrop-blur-sm">
-        <CardHeader className="relative border-b border-slate-100 bg-gradient-to-r from-slate-50/50 to-white/50 p-4 md:p-6 md:pb-4">
-          <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900 md:text-lg">
-            <div className={cn("rounded-lg bg-gradient-to-br p-1.5 shadow-lg md:p-2", gradient)}>
-              <Icon className="h-4 w-4 text-white md:h-5 md:w-5" />
-            </div>
-            {title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="relative p-4 md:p-6">
-          {children}
-        </CardContent>
-      </Card>
-    </div>
+    <section className="rounded-2xl border border-neutral-200 bg-white">
+      <header className="flex items-center gap-2.5 border-b border-neutral-100 px-5 py-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100">
+          <Icon className="h-4 w-4 text-neutral-700" />
+        </div>
+        <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+      </header>
+      <div className="p-5">{children}</div>
+    </section>
   )
 }
 
@@ -178,63 +175,58 @@ function NuevoDocumentoContent() {
 
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 p-4 pt-20 md:p-8 md:pt-8">
-      <div className="mx-auto max-w-6xl">
-
-        {/* ── Header ───────────────────────────────────────────────────────── */}
-        <div className="mb-6 md:mb-8">
-          <div className="mb-4 flex items-center gap-3 md:mb-6">
-            <Link href="/documentos">
-              <Button variant="ghost" size="icon"
-                className="h-10 w-10 rounded-xl border border-slate-200/50 bg-white/80 shadow-lg backdrop-blur-sm transition-all hover:scale-105 hover:border-blue-300 hover:bg-blue-50 md:h-12 md:w-12">
-                <ArrowLeft className="h-4 w-4 md:h-5 md:w-5" />
-              </Button>
-            </Link>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-blue-600 md:h-6 md:w-6" />
-                <h1 className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-xl font-bold text-transparent md:text-3xl">
-                  Nuevo Documento
-                </h1>
-              </div>
-              <p className="mt-1 text-xs text-slate-600 md:text-sm">
-                Creá un presupuesto, recibo o remito · <kbd className="rounded bg-slate-100 px-1 text-[10px] font-mono">⌘S</kbd> guardar · <kbd className="rounded bg-slate-100 px-1 text-[10px] font-mono">⌘↵</kbd> enviar
-              </p>
-            </div>
-          </div>
-
-          {/* Botones — Fixed en móvil, inline en desktop */}
-          <div className="fixed bottom-0 left-0 right-0 z-40 flex gap-2 border-t border-slate-200/80 bg-white/95 p-4 shadow-2xl backdrop-blur-xl md:relative md:z-auto md:border-0 md:bg-transparent md:p-0 md:shadow-none">
-            <Button variant="outline" onClick={() => submit("draft")}
-              disabled={!isValid || isSubmitting} title="Ctrl/Cmd + S"
-              className="flex-1 border-slate-200 bg-white font-semibold shadow-lg disabled:opacity-50 md:flex-none md:px-6">
-              {isSubmitting && saveAction === "draft"
-                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                : <Save className="mr-2 h-4 w-4" />
-              }
-              <span className="hidden md:inline">Guardar Borrador</span>
-              <span className="md:hidden">Guardar</span>
-            </Button>
-
-            <Button onClick={() => submit("send")}
-              disabled={!isValid || isSubmitting} title="Ctrl/Cmd + Enter"
-              className={cn(
-                "flex-1 overflow-hidden font-bold shadow-2xl transition-all disabled:opacity-50 md:flex-none md:px-6",
-                type === "REMITO"
-                  ? "bg-gradient-to-r from-orange-500 to-amber-600 shadow-orange-500/30"
-                  : "bg-gradient-to-r from-emerald-500 to-green-600 shadow-emerald-500/30"
-              )}>
-              {isSubmitting && saveAction === "send"
-                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                : <Send className="mr-2 h-4 w-4" />
-              }
-              <span className="hidden md:inline">
-                {type === "REMITO" ? "Enviar a Reparto" : "Guardar y Enviar"}
-              </span>
-              <span className="md:hidden">Enviar</span>
-            </Button>
-          </div>
+    <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8">
+      {/* ── Header ───────────────────────────────────────────────────────── */}
+      <div className="mb-6 flex items-center gap-3">
+        <Link href="/documentos">
+          <Button variant="ghost" size="icon-sm" aria-label="Volver">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Nuevo documento</h1>
+          <p className="mt-0.5 text-xs text-neutral-500">
+            Presupuesto, recibo o remito ·{" "}
+            <kbd className="rounded bg-neutral-100 px-1 font-mono text-[10px]">⌘S</kbd> guardar ·{" "}
+            <kbd className="rounded bg-neutral-100 px-1 font-mono text-[10px]">⌘↵</kbd> enviar
+          </p>
         </div>
+      </div>
+
+      {/* Botones — fixed en móvil (encima del bottom nav), inline en desktop */}
+      <div className="fixed bottom-20 left-0 right-0 z-30 flex gap-2 border-t border-neutral-200 bg-white px-4 py-3 md:relative md:bottom-0 md:z-auto md:mb-6 md:border-0 md:bg-transparent md:p-0">
+        <Button
+          variant="outline"
+          onClick={() => submit("draft")}
+          disabled={!isValid || isSubmitting}
+          title="Ctrl/Cmd + S"
+          className="flex-1 md:flex-none"
+        >
+          {isSubmitting && saveAction === "draft" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
+          <span className="hidden md:inline">Guardar borrador</span>
+          <span className="md:hidden">Guardar</span>
+        </Button>
+        <Button
+          onClick={() => submit("send")}
+          disabled={!isValid || isSubmitting}
+          title="Ctrl/Cmd + Enter"
+          className="flex-1 md:flex-none"
+        >
+          {isSubmitting && saveAction === "send" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
+          <span className="hidden md:inline">
+            {type === "REMITO" ? "Enviar a reparto" : "Guardar y enviar"}
+          </span>
+          <span className="md:hidden">Enviar</span>
+        </Button>
+      </div>
 
         {/* ── Grid principal ────────────────────────────────────────────────── */}
         <div className="space-y-4 pb-24 md:grid md:gap-6 md:space-y-0 md:pb-0 lg:grid-cols-3">
@@ -254,12 +246,12 @@ function NuevoDocumentoContent() {
                         "group relative overflow-hidden rounded-xl border-2 p-3.5 text-left transition-all duration-300 md:p-5",
                         isSelected
                           ? isRemito
-                            ? "border-orange-400 bg-gradient-to-br from-orange-50 to-amber-50/50 shadow-lg shadow-orange-500/20"
-                            : "border-blue-400 bg-gradient-to-br from-blue-50 to-indigo-50/50 shadow-lg shadow-blue-500/20"
-                          : "border-slate-200 bg-white/50 hover:border-slate-300 hover:bg-slate-50/50"
+                            ? "border-orange-400 bg-orange-500/50 shadow-lg "
+                            : "border-blue-400 bg-neutral-900/50 shadow-lg "
+                          : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50/50"
                       )}>
-                      <p className="mb-0.5 text-sm font-bold text-slate-900 md:text-base">{cfg.label}</p>
-                      <p className="text-[10px] text-slate-600 md:text-xs">{cfg.description}</p>
+                      <p className="mb-0.5 text-sm font-bold text-neutral-900 md:text-base">{cfg.label}</p>
+                      <p className="text-[10px] text-neutral-600 md:text-xs">{cfg.description}</p>
                       {cfg.badgeLabel && (
                         <Badge variant="secondary" className="mt-2 bg-orange-100 text-[10px] font-semibold text-orange-700">
                           {cfg.badgeLabel}
@@ -285,20 +277,20 @@ function NuevoDocumentoContent() {
             <SectionCard title="Observaciones" icon={MessageSquare} gradient="from-amber-500 to-orange-600">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-slate-700">
-                    Observaciones <span className="font-normal text-slate-500">(visible para el cliente)</span>
+                  <Label className="text-xs font-semibold text-neutral-700">
+                    Observaciones <span className="font-normal text-neutral-500">(visible para el cliente)</span>
                   </Label>
                   <Textarea
                     placeholder="Condiciones de venta, detalles de entrega, etc."
                     value={observations}
                     onChange={(e) => setObservations(e.target.value)}
                     rows={3}
-                    className="resize-none border-slate-200 bg-white/50 text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    className="resize-none border-neutral-200 bg-white text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-slate-700">
-                    Notas internas <span className="font-normal text-slate-500">(solo vos)</span>
+                  <Label className="text-xs font-semibold text-neutral-700">
+                    Notas internas <span className="font-normal text-neutral-500">(solo vos)</span>
                   </Label>
                   <Textarea
                     placeholder="Notas privadas sobre esta venta..."
@@ -329,10 +321,10 @@ function NuevoDocumentoContent() {
                         className={cn(
                           "flex w-full items-center justify-between rounded-lg border-2 px-3 py-2.5 text-sm transition-all",
                           paymentMethod === m.value
-                            ? "border-blue-400 bg-gradient-to-r from-blue-50 to-indigo-50/50 shadow-md"
-                            : "border-slate-200 bg-white/50 hover:border-slate-300"
+                            ? "border-blue-400 bg-neutral-900/50 shadow-md"
+                            : "border-neutral-200 bg-white hover:border-neutral-300"
                         )}>
-                        <span className="font-semibold text-slate-900">{m.label}</span>
+                        <span className="font-semibold text-neutral-900">{m.label}</span>
                         {m.surcharge > 0 && (
                           <Badge variant="secondary" className="text-xs font-bold">+{m.surcharge}%</Badge>
                         )}
@@ -349,9 +341,9 @@ function NuevoDocumentoContent() {
                 <div className="space-y-3">
                   {/* Tipo de pago */}
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-slate-700">Tipo de Pago</Label>
+                    <Label className="text-xs font-semibold text-neutral-700">Tipo de Pago</Label>
                     <Select value={paymentType} onValueChange={setPaymentType}>
-                      <SelectTrigger className="border-slate-200 bg-white/50 text-sm font-semibold focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+                      <SelectTrigger className="border-neutral-200 bg-white text-sm font-semibold focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -366,22 +358,22 @@ function NuevoDocumentoContent() {
 
                   {/* Monto pagado */}
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-slate-700">
+                    <Label className="text-xs font-semibold text-neutral-700">
                       Monto Pagado{" "}
-                      <span className="font-normal text-slate-500">(0 = a cuenta)</span>
+                      <span className="font-normal text-neutral-500">(0 = a cuenta)</span>
                     </Label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-neutral-500">$</span>
                       <Input
                         type="number" min="0" step="0.01"
                         value={amountPaid || ""}
                         onChange={(e) => handleAmountPaidChange(e.target.value)}
-                        className="border-slate-200 bg-white/50 pl-7 text-sm font-semibold focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                        className="border-neutral-200 bg-white pl-7 text-sm font-semibold focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
                         placeholder="0.00"
                       />
                     </div>
                     {calc.total > 0 && (
-                      <p className="text-[10px] text-slate-500">Total del documento: {formatCurrency(calc.total)}</p>
+                      <p className="text-[10px] text-neutral-500">Total del documento: {formatCurrency(calc.total)}</p>
                     )}
                   </div>
 
@@ -427,7 +419,7 @@ function NuevoDocumentoContent() {
             {type === "PRESUPUESTO" && (
               <SectionCard title="Validez" icon={Calendar} gradient="from-violet-500 to-purple-600">
                 <Select value={String(validDays)} onValueChange={(v) => setValidDays(parseInt(v))}>
-                  <SelectTrigger className="border-slate-200 bg-white/50 text-sm font-semibold focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+                  <SelectTrigger className="border-neutral-200 bg-white text-sm font-semibold focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -443,7 +435,7 @@ function NuevoDocumentoContent() {
             <SectionCard title="Envío" icon={Truck} gradient="from-orange-500 to-amber-600">
               <div className="space-y-3">
                 <Select value={shippingType} onValueChange={setShippingType}>
-                  <SelectTrigger className="border-slate-200 bg-white/50 text-sm font-semibold focus:border-orange-400 focus:ring-2 focus:ring-orange-100">
+                  <SelectTrigger className="border-neutral-200 bg-white text-sm font-semibold focus:border-orange-400 focus:ring-2 focus:ring-orange-100">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -455,13 +447,13 @@ function NuevoDocumentoContent() {
 
                 {shippingType.includes("costo") && (
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-slate-700">Costo de envío</Label>
+                    <Label className="text-xs font-semibold text-neutral-700">Costo de envío</Label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-neutral-500">$</span>
                       <Input type="number" min="0"
                         value={shippingCost || ""}
                         onChange={(e) => setShippingCost(parseFloat(e.target.value) || 0)}
-                        className="border-slate-200 bg-white/50 pl-7 text-sm font-semibold focus:border-orange-400"
+                        className="border-neutral-200 bg-white pl-7 text-sm font-semibold focus:border-orange-400"
                       />
                     </div>
                   </div>
@@ -474,25 +466,25 @@ function NuevoDocumentoContent() {
               <div className={cn(
                 "absolute -inset-0.5 rounded-2xl opacity-30 blur transition group-hover:opacity-40",
                 type === "REMITO"
-                  ? "bg-gradient-to-r from-orange-500 to-amber-600"
-                  : "bg-gradient-to-r from-emerald-500 to-green-600"
+                  ? "bg-orange-500"
+                  : "bg-emerald-600"
               )} />
               <Card className={cn(
-                "relative overflow-hidden border-0 shadow-2xl backdrop-blur-sm",
+                "relative overflow-hidden border-0 shadow-2xl ",
                 type === "REMITO"
-                  ? "bg-gradient-to-br from-orange-50/95 to-amber-50/90"
-                  : "bg-gradient-to-br from-emerald-50/95 to-green-50/90"
+                  ? "bg-neutral-50"
+                  : "bg-neutral-50"
               )}>
                 <CardHeader className={cn(
                   "relative border-b p-4",
                   type === "REMITO" ? "border-orange-200/50" : "border-emerald-200/50"
                 )}>
-                  <CardTitle className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                  <CardTitle className="flex items-center gap-2 text-sm font-bold text-neutral-900">
                     <div className={cn(
                       "rounded-lg p-1 shadow-lg",
                       type === "REMITO"
-                        ? "bg-gradient-to-br from-orange-500 to-amber-600"
-                        : "bg-gradient-to-br from-emerald-500 to-green-600"
+                        ? "bg-orange-500"
+                        : "bg-emerald-600"
                     )}>
                       <CheckCircle2 className="h-3.5 w-3.5 text-white" />
                     </div>
@@ -503,21 +495,21 @@ function NuevoDocumentoContent() {
                   {type !== "REMITO" ? (
                     <>
                       <div className="flex justify-between rounded-lg bg-white/60 px-3 py-2 text-sm">
-                        <span className="text-slate-600">Subtotal</span>
-                        <span className="font-bold text-slate-900">{formatCurrency(calc.subtotal)}</span>
+                        <span className="text-neutral-600">Subtotal</span>
+                        <span className="font-bold text-neutral-900">{formatCurrency(calc.subtotal)}</span>
                       </div>
 
                       {calc.surcharge > 0 && (
                         <div className="flex justify-between rounded-lg bg-white/60 px-3 py-2 text-sm">
-                          <span className="text-slate-600">Recargo ({calc.surchargeRate}%)</span>
+                          <span className="text-neutral-600">Recargo ({calc.surchargeRate}%)</span>
                           <span className="font-bold text-orange-600">{formatCurrency(calc.surcharge)}</span>
                         </div>
                       )}
 
                       {calc.shippingTotal > 0 && (
                         <div className="flex justify-between rounded-lg bg-white/60 px-3 py-2 text-sm">
-                          <span className="text-slate-600">Envío</span>
-                          <span className="font-bold text-slate-900">{formatCurrency(calc.shippingTotal)}</span>
+                          <span className="text-neutral-600">Envío</span>
+                          <span className="font-bold text-neutral-900">{formatCurrency(calc.shippingTotal)}</span>
                         </div>
                       )}
 
@@ -535,8 +527,8 @@ function NuevoDocumentoContent() {
                       <div className={cn(
                         "flex items-center justify-between rounded-xl p-3 shadow-lg md:p-4",
                         calc.hasOnlyFreeItems
-                          ? "bg-gradient-to-r from-emerald-400 to-green-500"
-                          : "bg-gradient-to-r from-emerald-500 to-green-600"
+                          ? "bg-emerald-600"
+                          : "bg-emerald-600"
                       )}>
                         <span className="text-sm font-bold text-white">Total</span>
                         <span className="text-2xl font-bold text-white drop-shadow-lg md:text-3xl">
@@ -600,17 +592,9 @@ function NuevoDocumentoContent() {
                   )}
                 </CardContent>
               </Card>
-            </div>
           </div>
         </div>
       </div>
-
-      <style jsx global>{`
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to   { opacity: 1; transform: translateY(0);    }
-        }
-      `}</style>
     </div>
   )
 }
